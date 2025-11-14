@@ -44,10 +44,12 @@ static void run_var_expand_tests(const struct var_expand_params *params,
 			test_assert_idx(error != NULL, i);
 			test_assert_idx(dest->used == 0,i );
 			if (test->ret < 0) {
-				i_assert(test->out != NULL && *test->out != '\0');
+				i_assert(test->out != NULL);
 				const char *match = strstr(error, test->out);
 				test_assert_idx(match != NULL, i);
-				if (match == NULL) {
+				if (*test->out == '\0')
+					i_debug("unexpected error '%s'", error);
+				else if (match == NULL) {
 					i_debug("error '%s' does not contain '%s'",
 						error, test->out);
 				}
@@ -95,6 +97,15 @@ static void test_var_expand_builtin_filters(void) {
 	};
 
 	const struct var_expand_test tests[] = {
+		/* syntax */
+		{ .in = "%{}", .out = "", .ret = 0 },
+		{
+			.in = "%{",
+			.out = "syntax error, unexpected end of file, expecting "
+			       "CCBRACE or PIPE or NAME",
+			.ret = -1
+		},
+		{ .in = "hello%{}world", .out = "helloworld", .ret = 0 },
 		/* basic lookup */
 		{ .in = "%{first}", .out = "hello", .ret = 0 },
 		{ .in = "%{lookup('first')}", .out = "hello", .ret = 0 },

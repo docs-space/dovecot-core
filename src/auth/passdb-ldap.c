@@ -9,7 +9,6 @@
 #include "array.h"
 #include "str.h"
 #include "password-scheme.h"
-#include "auth-cache.h"
 #include "settings.h"
 #include "auth-settings.h"
 #include "db-ldap.h"
@@ -153,9 +152,11 @@ ldap_auth_bind_callback(struct ldap_connection *conn,
 					    NULL, NULL, NULL, NULL, FALSE);
 		if (ret == LDAP_SUCCESS)
 			ret = result;
-		if (ret == LDAP_SUCCESS)
+		if (ret == LDAP_SUCCESS) {
 			passdb_result = PASSDB_RESULT_OK;
-		else if (ret == LDAP_INVALID_CREDENTIALS) {
+			e_debug(authdb_event(auth_request),
+				"binding successful");
+		} else if (ret == LDAP_INVALID_CREDENTIALS) {
 			auth_request_db_log_login_failure(auth_request,
 				AUTH_LOG_MSG_PASSWORD_MISMATCH" (for LDAP bind)");
 			passdb_result = PASSDB_RESULT_PASSWORD_MISMATCH;
@@ -192,6 +193,8 @@ static void ldap_auth_bind(struct ldap_connection *conn,
 				     auth_request);
 		return;
 	}
+
+	e_debug(authdb_event(auth_request), "bind: dn=%s", brequest->dn);
 
 	brequest->request.callback = ldap_auth_bind_callback;
 	db_ldap_request(conn, &brequest->request);
@@ -434,9 +437,11 @@ static void ldap_lookup_credentials(struct auth_request *request,
 	settings_free(ldap_pre);
 }
 
-static int passdb_ldap_preinit(pool_t pool, struct event *event,
-		   	       struct passdb_module **module_r,
-			       const char **error_r)
+static int
+passdb_ldap_preinit(pool_t pool, struct event *event,
+		    const struct passdb_parameters *passdb_params,
+		    struct passdb_module **module_r,
+		    const char **error_r)
 {
 	const struct auth_passdb_post_settings *auth_post = NULL;
 	const struct ldap_pre_settings *ldap_pre = NULL;
@@ -459,13 +464,14 @@ static int passdb_ldap_preinit(pool_t pool, struct event *event,
 				    ldap_pre->passdb_ldap_bind ?
 				    	"password" : NULL);
 
-	module->module.default_cache_key = auth_cache_parse_key_and_fields(
-		pool, t_strconcat(ldap_pre->ldap_base,
-				  ldap_pre->passdb_ldap_filter, NULL),
-		&auth_post->fields, NULL);
+	const char *query = t_strconcat(ldap_pre->ldap_base,
+					ldap_pre->passdb_ldap_bind_userdn,
+					ldap_pre->passdb_ldap_filter, NULL);
+	ret = passdb_set_cache_key(&module->module, passdb_params, pool,
+				   query, &auth_post->fields,
+				   NULL, error_r);
 
 	*module_r = &module->module;
-	ret = 0;
 
 failed:
 	settings_free(auth_post);

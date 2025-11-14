@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define FUZZ_SASL_MAX_PASSWORD_SIZE SASL_MAX_MESSAGE_SIZE
+
 enum fuzz_sasl_modification {
 	FUZZ_SASL_MOD_DELETE = 0,
 	FUZZ_SASL_MOD_REPLACE,
@@ -384,6 +386,34 @@ fuzz_sasl_amend_data(struct fuzz_sasl_context *fctx,
 	buffer_free(&buf2);
 }
 
+static void fuzz_assert_success_validity(struct fuzz_sasl_context *fctx)
+{
+	static const char *const password_ignore_mechanisms[] = {
+		SASL_MECH_NAME_ANONYMOUS,
+		SASL_MECH_NAME_LOGIN,
+		SASL_MECH_NAME_NTLM,
+		SASL_MECH_NAME_OAUTHBEARER,
+		SASL_MECH_NAME_PLAIN,
+		SASL_MECH_NAME_XOAUTH2,
+		NULL
+	};
+
+	/* Check whether successful authentication is actually a problem. */
+
+	if (strcmp(fctx->params->client_password,
+		   fctx->params->server_password) != 0) {
+		/* For some reason we got here with the wrong password/token.
+		   For plaintext mechanisms, this can easily happen when the
+		   fuzzer mends the password in the SASL interaction by
+		   coincidence. For hashed mechanisms, this will require a hash
+		   collision, which we assume is sufficiently unlikely that
+		   there is a significant chance of something fishy going on.
+		 */
+		i_assert(str_array_icase_find(password_ignore_mechanisms,
+					      fctx->params->mech));
+	}
+}
+
 static void
 fuzz_server_request_output(struct sasl_server_req_ctx *rctx,
 			   const struct sasl_server_output *output)
@@ -402,15 +432,7 @@ fuzz_server_request_output(struct sasl_server_req_ctx *rctx,
 		failed = TRUE;
 		break;
 	case SASL_SERVER_OUTPUT_SUCCESS:
-		if (strcasecmp(fctx->params->mech, SASL_MECH_NAME_ANONYMOUS) != 0 &&
-		    strcasecmp(fctx->params->mech, SASL_MECH_NAME_PLAIN) != 0 &&
-		    strcasecmp(fctx->params->mech, SASL_MECH_NAME_LOGIN) != 0 &&
-		    strcasecmp(fctx->params->mech, SASL_MECH_NAME_NTLM) != 0) {
-			/* hash-based mechanisms should never be able to get
-			   here when password is wrong */
-			i_assert(strcmp(fctx->params->client_password,
-					fctx->params->server_password) == 0);
-		}
+		fuzz_assert_success_validity(fctx);
 		fctx->auth_success = TRUE;
 		fctx->finished = TRUE;
 		/* fall through */
@@ -575,10 +597,14 @@ static void fuzz_sasl_run(struct istream *input)
 	line = i_stream_read_next_line(input);
 	if (line == NULL)
 		return;
+	if (strlen(line) > FUZZ_SASL_MAX_PASSWORD_SIZE)
+		return;
 	params.server_password = t_strdup(line);
 
 	line = i_stream_read_next_line(input);
 	if (line == NULL)
+		return;
+	if (strlen(line) > FUZZ_SASL_MAX_PASSWORD_SIZE)
 		return;
 	if (*line == '\0')
 		params.client_password = params.server_password;

@@ -35,6 +35,33 @@
 /* ignore unused parameters */
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+
+/* This will get used if you add YYDEBUG=1 to AM_CFLAGS and set
+   var_expand_parser_debug=1 global variable.
+   This can be done e.g.
+
+   extern int var_expand_parser_debug;
+   ...
+   var_expand_parser_debug=1;
+
+   it will print tracing information from the parser.
+*/
+static int i_vyyprintf (const char *format, const char *file, int line, ...) ATTR_FORMAT(1, 4);
+static int i_vyyprintf (const char *format, const char *file, int line, ...)
+{
+	va_list va;
+	va_start(va, line);
+	struct failure_context ctx = {
+		.type = LOG_TYPE_DEBUG,
+		.log_prefix = t_strdup_printf("Debug: %s:%d: ", file, line),
+	};
+	i_log_typev(&ctx, format, va);
+	va_end(va);
+	return 0;
+}
+
+#define YYFPRINTF(f, format, args...) i_vyyprintf(format, __FILE__, __LINE__, ##args)
 
 
 #include <stdio.h>
@@ -174,10 +201,19 @@ push_argument(VAR_EXPAND_PARSER_STYPE *state,
 
 static void make_new_program(VAR_EXPAND_PARSER_STYPE *pstate)
 {
-	struct var_expand_program *p =
+	struct var_expand_program *plast, *pp, *p =
 		p_new(pstate->plist->pool, struct var_expand_program, 1);
 	p->pool = pstate->plist->pool;
-	pstate->pp->next = p;
+	pp = pstate->plist;
+	plast = NULL;
+	while (pp != NULL) {
+		plast = pp;
+		pp = pp->next;
+	}
+	if (plast != NULL)
+		plast->next = p;
+	else
+		pstate->plist = p;
 	pstate->p = p;
 }
 

@@ -1,3 +1,5 @@
+include $(top_srcdir)/Makefile.test.include
+
 noinst_LTLIBRARIES = libmail.la
 
 AM_CPPFLAGS = \
@@ -114,7 +116,10 @@ test_programs = \
 fuzz_programs =
 
 if USE_FUZZER
-fuzz_programs += fuzz-message-parser
+fuzz_programs += fuzz-message-parser \
+		 fuzz-qp-decoder \
+		 fuzz-message-date \
+		 fuzz-message-decoder
 
 nodist_EXTRA_fuzz_message_parser_SOURCES = force-cxx-linking.cxx
 
@@ -124,9 +129,33 @@ fuzz_message_parser_SOURCES = fuzz-message-parser.c
 fuzz_message_parser_LDADD = $(test_libs)
 fuzz_message_parser_DEPENDENCIES = $(test_deps)
 
+nodist_EXTRA_fuzz_qp_decoder_SOURCES = force-cxx-linking.cxx
+
+fuzz_qp_decoder_CPPFLAGS = $(FUZZER_CPPFLAGS)
+fuzz_qp_decoder_LDFLAGS = $(FUZZER_LDFLAGS)
+fuzz_qp_decoder_SOURCES = fuzz-qp-decoder.c
+fuzz_qp_decoder_LDADD = $(test_libs)
+fuzz_qp_decoder_DEPENDENCIES = $(test_deps)
+
+nodist_EXTRA_fuzz_message_date_SOURCES = force-cxx-linking.cxx
+
+fuzz_message_date_CPPFLAGS = $(FUZZER_CPPFLAGS)
+fuzz_message_date_LDFLAGS = $(FUZZER_LDFLAGS)
+fuzz_message_date_SOURCES = fuzz-message-date.c
+fuzz_message_date_LDADD = $(test_libs)
+fuzz_message_date_DEPENDENCIES = $(test_deps)
+
+nodist_EXTRA_fuzz_message_decoder_SOURCES = force-cxx-linking.cxx
+
+fuzz_message_decoder_CPPFLAGS = $(FUZZER_CPPFLAGS)
+fuzz_message_decoder_LDFLAGS = $(FUZZER_LDFLAGS)
+fuzz_message_decoder_SOURCES = fuzz-message-decoder.c
+fuzz_message_decoder_LDADD = $(test_libs)
+fuzz_message_decoder_DEPENDENCIES = $(test_deps)
+
 endif
 
-noinst_PROGRAMS = $(fuzz_programs) $(test_programs)
+noinst_PROGRAMS += $(fuzz_programs)
 
 test_libs = \
 	$(noinst_LTLIBRARIES) \
@@ -251,8 +280,3 @@ test_rfc822_parser_DEPENDENCIES = $(test_deps)
 test_message_part_serialize_SOURCES = test-message-part-serialize.c
 test_message_part_serialize_LDADD = $(test_libs)
 test_message_part_serialize_DEPENDENCIES = $(test_deps)
-
-check-local:
-	for bin in $(test_programs); do \
-	  if ! $(RUN_TEST) ./$$bin; then exit 1; fi; \
-	done

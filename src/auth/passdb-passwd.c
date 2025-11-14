@@ -1,7 +1,6 @@
 /* Copyright (c) 2002-2018 Dovecot authors, see the included COPYING file */
 
 #include "auth-common.h"
-#include "auth-cache.h"
 #include "passdb.h"
 #include "settings.h"
 
@@ -127,9 +126,11 @@ passwd_lookup_credentials(struct auth_request *request,
 				  PASSWD_PASS_SCHEME, callback, request);
 }
 
-static int passwd_preinit(pool_t pool, struct event *event,
-			  struct passdb_module **module_r,
-			  const char **error_r )
+static int
+passwd_preinit(pool_t pool, struct event *event,
+	       const struct passdb_parameters *passdb_params,
+	       struct passdb_module **module_r,
+	       const char **error_r)
 {
 	const struct auth_passdb_post_settings *post_set;
 	struct passdb_module *module = p_new(pool, struct passdb_module, 1);
@@ -140,13 +141,13 @@ static int passwd_preinit(pool_t pool, struct event *event,
 			 SETTINGS_GET_FLAG_NO_EXPAND,
 			 &post_set, error_r) < 0)
 		return -1;
-	module->default_cache_key = auth_cache_parse_key_and_fields(pool,
-								    AUTH_CACHE_KEY_USER,
-								    &post_set->fields,
-								    "passwd");
+
+	int ret = passdb_set_cache_key(module, passdb_params, pool,
+				       AUTH_CACHE_KEY_USER,
+				       &post_set->fields, "passwd", error_r);
 	settings_free(post_set);
 	*module_r = module;
-	return 0;
+	return ret;
 }
 
 static void passwd_deinit(struct passdb_module *module ATTR_UNUSED)

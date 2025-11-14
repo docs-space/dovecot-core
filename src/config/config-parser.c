@@ -225,7 +225,11 @@ config_parser_add_service_default_keyvalues(struct config_parser_context *ctx,
 {
 	struct config_filter_parser *orig_filter_parser =
 		ctx->cur_section->filter_parser;
+	string_t *key_with_path = str_new(default_pool, 128);
 	const char *p;
+
+	str_printfa(key_with_path, "service/%s/", service_name);
+	size_t key_prefix_len = str_len(key_with_path);
 
 	for (unsigned int i = 0; defaults[i].key != NULL; i++) T_BEGIN {
 		const char *key = defaults[i].key;
@@ -254,16 +258,26 @@ config_parser_add_service_default_keyvalues(struct config_parser_context *ctx,
 			key = p + 1;
 		}
 
+		const char *value = defaults[i].value;
+		if (ctx->dovecot_config_version != NULL) {
+			str_truncate(key_with_path, key_prefix_len);
+			str_append(key_with_path, defaults[i].key);
+
+			(void)old_settings_default(ctx->dovecot_config_version,
+				defaults[i].key, str_c(key_with_path), &value);
+		}
+
 		config_parser_set_change_counter(ctx, CONFIG_PARSER_CHANGE_DEFAULTS);
-		if (config_apply_default(ctx, key, defaults[i].value) < 0) {
+		if (config_apply_default(ctx, key, value) < 0) {
 			i_panic("Failed to add default setting %s=%s for service %s: %s",
-				defaults[i].key, defaults[i].value,
+				defaults[i].key, value,
 				service_name, ctx->error);
 		}
 		config_parser_set_change_counter(ctx, CONFIG_PARSER_CHANGE_EXPLICIT);
 
 		ctx->cur_section->filter_parser = orig_filter_parser;
 	} T_END;
+	str_free(&key_with_path);
 }
 
 static void config_parser_add_services(struct config_parser_context *ctx,
@@ -2948,6 +2962,7 @@ static bool config_version_find(const char *version, const char **error_r)
 #else
 		"2.4.0",
 		"2.4.1",
+		"2.4.2",
 #endif
 		NULL
 	};
@@ -3220,7 +3235,9 @@ void config_parser_apply_line(struct config_parser_context *ctx,
 			/* new filter or error */
 			break;
 		}
-		if (hash_table_lookup(ctx->all_keys, key) == NULL) {
+		const struct config_parser_key *config_key =
+			hash_table_lookup(ctx->all_keys, key);
+		if (config_key == NULL) {
 			if ((ctx->flags & CONFIG_PARSE_FLAG_IGNORE_UNKNOWN) != 0)
 				break;
 			if (attempts != NULL)
@@ -3231,7 +3248,16 @@ void config_parser_apply_line(struct config_parser_context *ctx,
 			break;
 		}
 
-		/* This is SET_STRLIST or SET_BOOLLIST */
+		/* This should be SET_STRLIST or SET_BOOLLIST */
+		const struct setting_define *def =
+			&all_infos[config_key->info_idx]->defines[config_key->define_idx];
+		if (def->type != SET_STRLIST && def->type != SET_BOOLLIST) {
+			ctx->error = p_strdup_printf(ctx->pool,
+				"Setting %s cannot be used as a section", key);
+		} else if (line->value[0] != '\0') {
+			ctx->error = p_strdup_printf(ctx->pool,
+				"Setting %s cannot have a value for the section", key);
+		}
 		break;
 	}
 	case CONFIG_LINE_TYPE_SECTION_END:
@@ -3254,6 +3280,32 @@ void config_parser_apply_line(struct config_parser_context *ctx,
 		(void)settings_include(ctx, fix_relative_path(line->value, ctx->cur_input),
 				       line->type == CONFIG_LINE_TYPE_INCLUDE_TRY);
 		break;
+	}
+}
+
+static void
+check_defaults_equal(const struct setting_parser_info *info1,
+		     const struct setting_define *def1,
+		     const struct setting_parser_info *info2,
+		     const struct setting_define *def2)
+{
+	i_assert(def1->type == def2->type);
+
+	const void *value1 = CONST_PTR_OFFSET(info1->defaults, def1->offset);
+	const void *value2 = CONST_PTR_OFFSET(info2->defaults, def2->offset);
+
+	string_t *str1 = t_str_new(64);
+	if (!config_export_type(str1, value1, def1->type)) {
+		/* Complex type - defaults aren't in this pointer */
+		return;
+	}
+	string_t *str2 = t_str_new(str_len(str1));
+	if (!config_export_type(str2, value2, def2->type))
+		i_unreached();
+	if (strcmp(str_c(str1), str_c(str2)) != 0) {
+		i_panic("Setting key '%s' default value mismatch between infos %s and %s (%s != %s)",
+			def1->key, info1->name, info2->name,
+			str_c(str1), str_c(str2));
 	}
 }
 
@@ -3302,6 +3354,9 @@ config_parser_add_info(struct config_parser_context *ctx,
 				i_panic("Setting key '%s' flags mismatch between infos %s and %s (%d != %d)",
 					def->key, old_info->name, info->name,
 					old_def->flags, def->flags);
+			T_BEGIN {
+				check_defaults_equal(old_info, old_def, info, def);
+			} T_END;
 		}
 		config_key = p_new(ctx->pool, struct config_parser_key, 1);
 		config_key->info_idx = info_idx;

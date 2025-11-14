@@ -7,7 +7,6 @@
 
 #include "settings.h"
 #include "settings-parser.h"
-#include "auth-cache.h"
 #include "db-sql.h"
 
 #include <string.h>
@@ -292,6 +291,7 @@ static int userdb_sql_iterate_deinit(struct userdb_iterate_context *_ctx)
 
 static int
 userdb_sql_preinit(pool_t pool, struct event *event,
+		   const struct userdb_parameters *userdb_params,
 		   struct userdb_module **module_r, const char **error_r)
 {
 	struct sql_userdb_module *module;
@@ -318,13 +318,13 @@ userdb_sql_preinit(pool_t pool, struct event *event,
 		return -1;
 	}
 
-	module->module.default_cache_key =
-		auth_cache_parse_key_and_fields(pool, set->query,
-						&post_set->fields, "sql");
+	int ret = userdb_set_cache_key(&module->module, userdb_params, pool,
+				       set->query, &post_set->fields, "sql",
+				       error_r);
 	settings_free(set);
 	settings_free(post_set);
 	*module_r = &module->module;
-	return 0;
+	return ret;
 }
 
 static void userdb_sql_init(struct userdb_module *_module)

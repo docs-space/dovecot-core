@@ -10,6 +10,7 @@
 #include "safe-memset.h"
 #include "str.h"
 #include "str-sanitize.h"
+#include "settings-parser.h"
 #include "auth-client.h"
 #include "ssl-settings.h"
 #include "client.h"
@@ -76,7 +77,8 @@ static void cmd_helo_reply(struct submission_client *subm_client,
 				reply, "ENHANCEDSTATUSCODES");
 		}
 
-		if (subm_client->set->submission_max_mail_size > 0) {
+		if (subm_client->set->submission_max_mail_size > 0 &&
+		    subm_client->set->submission_max_mail_size != SET_SIZE_UNLIMITED) {
 			smtp_server_reply_ehlo_add_param(reply,
 				"SIZE", "%"PRIuUOFF_T,
 				subm_client->set->submission_max_mail_size);
@@ -118,19 +120,19 @@ void submission_client_auth_result(struct client *client,
 {
 	struct submission_client *subm_client =
 		container_of(client, struct submission_client, common);
-	struct smtp_server_cmd_ctx *cmd = subm_client->pending_auth;
+	struct smtp_server_cmd_ctx *cmd = subm_client->auth_cmd;
 
 	if (subm_client->conn == NULL)
 		return;
 
-	subm_client->pending_auth = NULL;
+	subm_client->auth_cmd = NULL;
 	i_assert(cmd != NULL);
 
 	switch (result) {
 	case CLIENT_AUTH_RESULT_SUCCESS:
 		/* nothing to be done for SMTP */
 		if (client->login_proxy != NULL)
-			subm_client->pending_auth = cmd;
+			subm_client->auth_cmd = cmd;
 		break;
 	case CLIENT_AUTH_RESULT_REFERRAL_NOLOGIN: {
 		const struct smtp_proxy_redirect predir = {
@@ -283,8 +285,9 @@ void submission_client_auth_send_challenge(struct client *client,
 {
 	struct submission_client *subm_client =
 		container_of(client, struct submission_client, common);
-	struct smtp_server_cmd_ctx *cmd = subm_client->pending_auth;
+	struct smtp_server_cmd_ctx *cmd = subm_client->auth_cmd;
 
+	i_assert(!subm_client->auth_cmd_implicit);
 	i_assert(cmd != NULL);
 
 	smtp_server_cmd_auth_send_challenge(cmd, data);
@@ -327,18 +330,49 @@ cmd_auth_set_master_data_prefix(struct submission_client *subm_client,
 	client->master_data_prefix = buffer_free_without_data(&buf);
 }
 
+void cmd_auth_begin(struct submission_client *subm_client)
+{
+	subm_client->auth_cmd_deferred = FALSE;
+
+	if (subm_client->auth_cmd == NULL)
+		return;
+
+	struct client *client = &subm_client->common;
+
+	if (subm_client->auth_cmd_implicit) {
+		(void)client_auth_begin_implicit(client,
+						 SASL_MECH_NAME_EXTERNAL, "=");
+	} else {
+		struct smtp_server_cmd_auth *data = subm_client->auth_cmd_data;
+
+		i_assert(data != NULL);
+		(void)client_auth_begin(client, data->sasl_mech,
+					data->initial_response);
+	}
+}
+
 int cmd_auth(void *conn_ctx, struct smtp_server_cmd_ctx *cmd,
 	     struct smtp_server_cmd_auth *data)
 {
 	struct submission_client *subm_client = conn_ctx;
 	struct client *client = &subm_client->common;
 
+	i_assert(!client->authenticating);
+
 	cmd_auth_set_master_data_prefix(subm_client, NULL);
+	subm_client->auth_cmd_deferred = FALSE;
 
-	i_assert(subm_client->pending_auth == NULL);
-	subm_client->pending_auth = cmd;
+	i_assert(subm_client->auth_cmd == NULL);
+	subm_client->auth_cmd = cmd;
+	subm_client->auth_cmd_data = data; /* allocated on cmd pool */
+	subm_client->auth_cmd_implicit = FALSE;
 
-	(void)client_auth_begin(client, data->sasl_mech, data->initial_response);
+	if (!auth_client_is_connected(auth_client)) {
+		subm_client->auth_cmd_deferred = TRUE;
+		return 0;
+	}
+
+	cmd_auth_begin(subm_client);
 	return 0;
 }
 
@@ -360,15 +394,24 @@ void cmd_mail(struct smtp_server_cmd_ctx *cmd, const char *params)
 		return;
 	}
 
+	i_assert(!client->authenticating);
+
 	e_debug(cmd->event,
 		"Performing implicit EXTERNAL authentication");
 
 	smtp_server_command_input_lock(cmd);
 
 	cmd_auth_set_master_data_prefix(subm_client, params);
+	subm_client->auth_cmd_deferred = FALSE;
 
-	i_assert(subm_client->pending_auth == NULL);
-	subm_client->pending_auth = cmd;
+	i_assert(subm_client->auth_cmd == NULL);
+	subm_client->auth_cmd = cmd;
+	subm_client->auth_cmd_implicit = TRUE;
 
-	(void)client_auth_begin_implicit(client, SASL_MECH_NAME_EXTERNAL, "=");
+	if (!auth_client_is_connected(auth_client)) {
+		subm_client->auth_cmd_deferred = TRUE;
+		return;
+	}
+
+	cmd_auth_begin(subm_client);
 }

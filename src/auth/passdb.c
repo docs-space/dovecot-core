@@ -3,6 +3,7 @@
 #include "auth-common.h"
 #include "array.h"
 #include "password-scheme.h"
+#include "auth-cache.h"
 #include "auth-worker-connection.h"
 #include "passdb.h"
 
@@ -164,9 +165,22 @@ void passdb_handle_credentials(enum passdb_result result,
 	callback(result, credentials, size, auth_request);
 }
 
+int passdb_set_cache_key(struct passdb_module *module,
+			 const struct passdb_parameters *passdb_params,
+			 pool_t pool, const char *query,
+			 const ARRAY_TYPE(const_string) *fields,
+			 const char *exclude_driver, const char **error_r)
+{
+	if (!passdb_params->use_cache)
+		return 0;
+
+	return auth_cache_parse_key_and_fields(pool, query, fields,
+			exclude_driver, &module->default_cache_key, error_r);
+}
+
 struct passdb_module *
 passdb_preinit(pool_t pool, struct event *event,
-	       const struct auth_passdb_settings *set)
+	       const struct auth_passdb_settings *set, bool use_cache)
 {
 	static unsigned int auth_passdb_id = 0;
 	struct passdb_module_interface *iface;
@@ -187,7 +201,10 @@ passdb_preinit(pool_t pool, struct event *event,
 	}
 
 	if (iface->preinit != NULL) {
-		if (iface->preinit(pool, event, &passdb, &error) < 0)
+		struct passdb_parameters params = {
+			.use_cache = use_cache && set->use_cache,
+		};
+		if (iface->preinit(pool, event, &params, &passdb, &error) < 0)
 			i_fatal("passdb %s: %s", set->name, error);
 		passdb->default_pass_scheme =
 			set->default_password_scheme;

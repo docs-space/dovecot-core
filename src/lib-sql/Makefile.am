@@ -1,3 +1,5 @@
+include $(top_srcdir)/Makefile.test.include
+
 noinst_LTLIBRARIES = libdriver_test.la libsql.la
 
 SQL_DRIVER_PLUGINS =
@@ -146,22 +148,15 @@ test_libs = \
 	$(noinst_LTLIBRARIES) \
 	../lib-dovecot/libdovecot.la
 
-check_PROGRAMS = test-sql
+test_programs = test-sql
 
 test_sql_SOURCES = test-sql.c
 test_sql_LDADD =  $(test_libs) $(DLLIB)
 test_sql_DEPENDENCIES = $(test_libs)
 
 if BUILD_SQLITE
-check_PROGRAMS += test-sql-sqlite
+test_programs += test-sql-sqlite
 test_sql_sqlite_SOURCES = test-sql-sqlite.c
 test_sql_sqlite_LDADD = $(SQLITE_LIB) $(pkglib_LTLIBRARIES) $(test_libs) $(DLLIB)
 test_sql_sqlite_DEPENDENCIES = $(SQLITE_LIB) $(pkglib_LTLIBRARIES) $(test_libs)
 endif
-
-noinst_PROGRAMS = $(check_PROGRAMS)
-
-check-local:
-	for bin in $(check_PROGRAMS); do \
-	  if ! $(RUN_TEST) ./$$bin; then exit 1; fi; \
-	done

@@ -1,3 +1,5 @@
+include $(top_srcdir)/Makefile.test.include
+
 noinst_LTLIBRARIES = libvar_expand.la
 
 # Squelch autoconf error about using .[ly] sources but not defining $(LEX)
@@ -11,7 +13,7 @@ YACC=/bin/false
 # and cleaner to make this rule ourselves instead of working around ylwrap
 # and yywrap's antiquated notion of what is happening.
 .l.c:
-	$(AM_V_GEN)$(FLEX) -o $@ $<
+	$(AM_V_GEN)$(FLEX) -8 -o $@ $<
 
 .y.c:
 	$(AM_V_GEN)$(BISON) -o $@ $<
@@ -56,8 +58,6 @@ pkginc_lib_HEADERS = $(headers)
 test_programs = \
 	test-var-expand
 
-noinst_PROGRAMS = $(test_programs)
-
 test_libs = \
 	libvar_expand.la \
 	../lib-regex/libdregex.la \
@@ -67,6 +67,21 @@ test_libs = \
 
 test_var_expand_SOURCE = test-var-expand.c
 test_var_expand_LDADD = $(test_libs)
+
+if USE_FUZZER
+fuzz_programs = fuzz-var-expand
+
+nodist_EXTRA_fuzz_var_expand_SOURCES = force-cxx-linking.cxx
+
+fuzz_var_expand_CPPFLAGS = $(FUZZER_CPPFLAGS)
+fuzz_var_expand_LDFLAGS = $(FUZZER_LDFLAGS)
+fuzz_var_expand_SOURCES = fuzz-var-expand.c
+fuzz_var_expand_LDADD = $(test_libs)
+fuzz_var_expand_DEPENDENCIES = libvar_expand.la
+
+noinst_PROGRAMS += $(fuzz_programs)
+
+endif
 
 check-local:
 	for bin in $(test_programs); do \

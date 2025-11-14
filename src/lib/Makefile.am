@@ -1,4 +1,7 @@
+include $(top_srcdir)/Makefile.test.include
+
 AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/lib-test \
 	$(LIBUNWIND_CFLAGS)
 
 noinst_LTLIBRARIES = liblib.la
@@ -80,7 +83,7 @@ $(srcdir)/unicode-data-tables.c $(srcdir)/unicode-data-tables.h \
 	$(srcdir)/unicode-ucd-compile.py $(UCD_FILES)
 	$(AM_V_GEN)$(PYTHON) $(srcdir)/unicode-ucd-compile.py $(UCD_DIR) $(srcdir)
 
-liblib_la_LIBADD = $(LIBUNWIND_LIBS)
+liblib_la_LIBADD = $(LIBUNWIND_LIBS) $(ZLIB_LIBS)
 liblib_la_SOURCES = \
 	array.c \
 	aqueue.c \
@@ -414,8 +417,7 @@ headers = \
 	wildcard-match.h \
 	write-full.h
 
-test_programs = test-lib
-noinst_PROGRAMS = $(test_programs)
+test_programs = test-lib test-cpu-limit
 
 test_lib_CPPFLAGS = \
 	-I$(top_srcdir)/src/lib-test \
@@ -439,7 +441,6 @@ test_lib_SOURCES = \
 	test-byteorder.c \
 	test-connection.c \
 	test-crc32.c \
-	test-cpu-limit.c \
 	test-data-stack.c \
 	test-env-util.c \
 	test-event-category-register.c \
@@ -531,10 +532,10 @@ test_headers = \
 test_lib_LDADD = $(test_libs) -lm
 test_lib_DEPENDENCIES = $(test_libs)
 
-check-local: $(UCD_FILES)
-	for bin in $(test_programs); do \
-	  if ! $(RUN_TEST) ./$$bin; then exit 1; fi; \
-	done
+test_cpu_limit_SOURCES = \
+	test-cpu-limit.c
+test_cpu_limit_LDADD = $(test_libs) -lm
+test_cpu_limit_DEPENDENCIES = $(test_libs)
 
 pkginc_libdir=$(pkgincludedir)
 pkginc_lib_HEADERS = $(headers)

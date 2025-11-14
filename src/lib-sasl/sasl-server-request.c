@@ -141,6 +141,22 @@ void sasl_server_request_destroy(struct sasl_server_req_ctx *rctx)
 }
 
 static bool
+sasl_server_request_fail_on_size(struct sasl_server_request *req,
+				 size_t data_size)
+{
+	if (data_size > (size_t)SASL_MAX_MESSAGE_SIZE) {
+		/* We should normally never get here, because the limit enforced
+		   by the auth service is smaller.
+		 */
+		e_debug(req->event, "Excessive response size (> %d)",
+			SASL_MAX_MESSAGE_SIZE);
+		sasl_server_request_failure(req->mech);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static bool
 sasl_server_request_fail_on_nuls(struct sasl_server_request *req,
 				 const unsigned char *data, size_t data_size)
 {
@@ -177,6 +193,8 @@ void sasl_server_request_initial(struct sasl_server_req_ctx *rctx,
 	i_assert(req->state == SASL_SERVER_REQUEST_STATE_NEW);
 	req->state = SASL_SERVER_REQUEST_STATE_SERVER;
 
+	if (sasl_server_request_fail_on_size(req, data_size))
+		return;
 	if (sasl_server_request_fail_on_nuls(req, data, data_size))
 		return;
 
@@ -212,6 +230,8 @@ void sasl_server_request_input(struct sasl_server_req_ctx *rctx,
 	i_assert(!req->finished_with_data);
 	req->state = SASL_SERVER_REQUEST_STATE_SERVER;
 
+	if (sasl_server_request_fail_on_size(req, data_size))
+		return;
 	if (sasl_server_request_fail_on_nuls(req, data, data_size))
 		return;
 
@@ -246,6 +266,13 @@ bool sasl_server_request_set_authid(struct sasl_server_mech_request *mreq,
 	struct sasl_server *server = req->sinst->server;
 	const struct sasl_server_request_funcs *funcs = server->funcs;
 
+	if (strlen(authid) > (size_t)SASL_MAX_AUTHID_SIZE) {
+		e_debug(req->event, "Failed to set authid: "
+			"Maximum length exceeded (> %d)", SASL_MAX_AUTHID_SIZE);
+		req->failed = TRUE;
+		return FALSE;
+	}
+
 	mreq->authid = p_strdup(req->pool, authid);
 
 	i_assert(req->rctx != NULL);
@@ -267,6 +294,13 @@ bool sasl_server_request_set_authzid(struct sasl_server_mech_request *mreq,
 	struct sasl_server_request *req = mreq->req;
 	struct sasl_server *server = req->sinst->server;
 	const struct sasl_server_request_funcs *funcs = server->funcs;
+
+	if (strlen(authzid) > (size_t)SASL_MAX_AUTHID_SIZE) {
+		e_debug(req->event, "Failed to set authzid: "
+			"Maximum length exceeded (> %d)", SASL_MAX_AUTHID_SIZE);
+		req->failed = TRUE;
+		return FALSE;
+	}
 
 	i_assert(req->rctx != NULL);
 	i_assert(funcs->request_set_authzid != NULL);

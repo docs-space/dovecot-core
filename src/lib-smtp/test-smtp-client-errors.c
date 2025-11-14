@@ -4343,7 +4343,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	test_subprocesses_init(debug);
+	test_init();
+	event_set_forced_debug(test_event, debug);
+	test_subprocesses_init();
 
 	/* listen on localhost */
 	i_zero(&bind_ip);
@@ -4352,7 +4354,6 @@ int main(int argc, char *argv[])
 
 	ret = test_run(test_functions);
 
-	test_subprocesses_deinit();
 	main_deinit();
 	lib_deinit();
 

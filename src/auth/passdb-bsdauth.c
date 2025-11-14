@@ -6,7 +6,6 @@
 #ifdef PASSDB_BSDAUTH
 
 #include "safe-memset.h"
-#include "auth-cache.h"
 #include "ipwd.h"
 #include "mycrypt.h"
 #include "settings.h"
@@ -89,6 +88,7 @@ bsdauth_verify_plain(struct auth_request *request, const char *password,
 
 static int
 bsdauth_preinit(pool_t pool, struct event *event,
+		const struct passdb_parameters *passdb_params,
 		struct passdb_module **module_r,
 		const char **error_r)
 {
@@ -101,12 +101,13 @@ bsdauth_preinit(pool_t pool, struct event *event,
 			 SETTINGS_GET_FLAG_NO_EXPAND,
 			 &post_set, error_r) < 0)
 		return -1;
-	module->default_cache_key = auth_cache_parse_key_and_fields(
-		pool, AUTH_CACHE_KEY_USER, &post_set->fields, "bsdauth");
+	int ret = passdb_set_cache_key(module, passdb_params, pool,
+				       AUTH_CACHE_KEY_USER, &post_set->fields,
+				       "bsdauth", error_r);
 
 	settings_free(post_set);
 	*module_r = module;
-	return 0;
+	return ret;
 }
 
 static void bsdauth_deinit(struct passdb_module *module ATTR_UNUSED)

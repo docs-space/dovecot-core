@@ -8,7 +8,6 @@
 #include "ioloop.h"
 #include "array.h"
 #include "str.h"
-#include "auth-cache.h"
 #include "settings.h"
 #include "auth-settings.h"
 #include "db-ldap.h"
@@ -172,7 +171,7 @@ static void userdb_ldap_iterate_callback(struct ldap_connection *conn,
 		return;
 	}
 
-	if (ctx->deinitialized)
+	if (ctx->deinitialized || ctx->ctx.failed)
 		return;
 
 	/* the iteration can take a while. reset the request's create time so
@@ -201,8 +200,11 @@ static void userdb_ldap_iterate_callback(struct ldap_connection *conn,
 			 &set, &error) < 0) {
 		e_error(event, "%s", error);
 		ctx->ctx.failed = TRUE;
-	}
-	else {
+	} else if (!array_is_created(&set->iterate_fields)) {
+		e_error(event, "iterate: No userdb_ldap_iterate_fields specified");
+		ctx->ctx.failed = TRUE;
+		settings_free(set);
+	} else {
 		unsigned int count;
 		const char *const *items = array_get(&set->iterate_fields, &count);
 		for (unsigned int ndx = 0; ndx < count - 1;) {
@@ -312,9 +314,11 @@ static int userdb_ldap_iterate_deinit(struct userdb_iterate_context *_ctx)
 	return ret;
 }
 
-static int userdb_ldap_preinit(pool_t pool, struct event *event,
-			       struct userdb_module **module_r,
-			       const char **error_r ATTR_UNUSED)
+static int
+userdb_ldap_preinit(pool_t pool, struct event *event,
+		    const struct userdb_parameters *userdb_params,
+		    struct userdb_module **module_r,
+		    const char **error_r ATTR_UNUSED)
 {
 	const struct auth_userdb_post_settings *auth_post = NULL;
 	const struct ldap_post_settings *ldap_post = NULL;
@@ -341,13 +345,12 @@ static int userdb_ldap_preinit(pool_t pool, struct event *event,
 	db_ldap_get_attribute_names(pool, &ldap_post->iterate_fields,
 				    &module->iterate_attributes, NULL, NULL);
 
-	module->module.default_cache_key = auth_cache_parse_key_and_fields(
-		pool, t_strconcat(ldap_pre->ldap_base,
-				  ldap_pre->userdb_ldap_filter, NULL),
-		&auth_post->fields, NULL);
+	const char *query = t_strconcat(ldap_pre->ldap_base,
+					ldap_pre->userdb_ldap_filter, NULL);
+	ret = userdb_set_cache_key(&module->module, userdb_params, pool,
+				   query, &auth_post->fields, NULL, error_r);
 
 	*module_r = &module->module;
-	ret = 0;
 
 failed:
 	settings_free(auth_post);

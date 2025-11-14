@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#define TEMP_DIRNAME ".test-path-util"
+#define TEMP_DIRNAME "path-util"
 
 static const char *tmpdir;
 static const char *cwd;
@@ -241,10 +241,12 @@ static void test_cleanup(void)
 		i_error("unlink_directory() failed: %s", error);
 }
 
-static void test_init(void)
+static void test_path_util_init(void)
 {
 	const char *error;
-	test_assert(t_get_working_dir(&cwd, &error) == 0);
+	cwd = test_dir_get();
+	if (t_normpath(cwd, &cwd, &error) < 0)
+		i_fatal("t_normpath(%s) failed: %s", cwd, error);
 	tmpdir = t_strconcat(cwd, "/"TEMP_DIRNAME, NULL);
 
 	test_cleanup();
@@ -259,7 +261,7 @@ void test_path_util(void)
 {
 	test_begin("test_path_util");
 	alarm(20);
-	test_init();
+	test_path_util_init();
 	test_local_path();
 	test_absolute_path_no_change();
 	test_travel_to_root();

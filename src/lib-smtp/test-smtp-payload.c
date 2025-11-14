@@ -21,6 +21,7 @@
 #include "dsasl-client.h"
 #include "sasl-server.h"
 #include "test-common.h"
+#include "test-dir.h"
 #include "test-subprocess.h"
 #include "settings.h"
 #include "smtp-server.h"
@@ -100,6 +101,11 @@ static void test_files_read_dir(const char *path)
 		if ((dp = readdir(dirp)) == NULL)
 			break;
 		if (*dp->d_name == '.')
+			continue;
+
+		if (str_ends_with(dp->d_name, ".tmp") ||
+		    str_ends_with(dp->d_name, ".log") ||
+		    str_ends_with(dp->d_name, ".trs"))
 			continue;
 
 		file = t_abspath_to(dp->d_name, path);
@@ -1338,7 +1344,7 @@ test_run_scenarios(
 	/* client settings */
 	i_zero(&smtp_client_set);
 	smtp_client_set.my_hostname = "localhost";
-	smtp_client_set.temp_path_prefix = "/tmp";
+	smtp_client_set.temp_path_prefix = test_dir_get();
 	smtp_client_set.command_timeout_msecs = CLIENT_PROGRESS_TIMEOUT_MSECS;
 	smtp_client_set.connect_timeout_msecs = CLIENT_PROGRESS_TIMEOUT_MSECS;
 	smtp_client_set.sasl_mechanisms = tset.sasl_mech;
@@ -1536,7 +1542,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	test_subprocesses_init(debug);
+	test_init();
+	event_set_forced_debug(test_event, debug);
+	test_dir_init("smtp-payload");
+	test_subprocesses_init();
 
 	/* listen on localhost */
 	i_zero(&bind_ip);
@@ -1545,7 +1554,6 @@ int main(int argc, char *argv[])
 
 	ret = test_run(test_functions);
 
-	test_subprocesses_deinit();
 	main_deinit();
 	lib_deinit();
 

@@ -99,6 +99,18 @@ log_killed_signal(struct master_service *service, const siginfo_t *si)
 	service->killed_signal_logged = TRUE;
 }
 
+static bool master_service_can_idle_die(struct master_service *service)
+{
+	if (service->master_status.available_count !=
+	    service->total_available_count)
+		return FALSE;
+
+	if (service->idle_die_callback != NULL &&
+	    !service->idle_die_callback())
+		return FALSE;
+	return TRUE;
+}
+
 static void sig_delayed_die(const siginfo_t *si, void *context)
 {
 	struct master_service *service = context;
@@ -113,15 +125,10 @@ static void sig_delayed_die(const siginfo_t *si, void *context)
 	} else if ((service->flags & MASTER_SERVICE_FLAG_STANDALONE) == 0) {
 		/* SIGINT came from master. die only if we're not handling
 		   any clients currently. */
-		if (service->master_status.available_count !=
-		    service->total_available_count)
-			return;
-
-		if (service->idle_die_callback != NULL &&
-		    !service->idle_die_callback()) {
+		if (!master_service_can_idle_die(service)) {
 			/* we don't want to die - send a notification to master
 			   so it doesn't think we're ignoring it completely. */
-			master_status_send(service, FALSE);
+			master_status_send(service, TRUE);
 			return;
 		}
 	}
@@ -1228,11 +1235,20 @@ static void master_service_start_accepted_fd(struct master_service *service)
 void master_service_run(struct master_service *service,
 			master_service_connection_callback_t *callback)
 {
+	bool run = TRUE;
+
 	service->callback = callback;
 	if (service->accepted_listener_fd != -1) T_BEGIN {
+		/* Mark the ioloop as running, so we'll catch if
+		   master_service_stop() -> io_loop_stop() is called.
+		   If it is (e.g. due to restart_request_count=1) we don't
+		   want to continue to io_loop_run() anymore. */
+		io_loop_set_running(service->ioloop);
 		master_service_start_accepted_fd(service);
+		run = io_loop_is_running(service->ioloop);
 	} T_END;
-	io_loop_run(service->ioloop);
+	if (run)
+		io_loop_run(service->ioloop);
 	service->callback = NULL;
 }
 

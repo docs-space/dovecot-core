@@ -2,6 +2,13 @@
 #define SASL_COMMON_H
 
 /*
+ * Absolute limits
+ */
+
+#define SASL_MAX_MESSAGE_SIZE (64 * 1024)
+#define SASL_MAX_AUTHID_SIZE 1024
+
+/*
  * Mechanism security flags
  */
 

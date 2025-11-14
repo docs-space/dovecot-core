@@ -3818,7 +3818,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	test_subprocesses_init(debug);
+	test_init();
+	event_set_forced_debug(test_event, debug);
+	test_subprocesses_init();
 
 	/* listen on localhost */
 	i_zero(&bind_ip);
@@ -3827,7 +3829,6 @@ int main(int argc, char *argv[])
 
 	ret = test_run(test_functions);
 
-	test_subprocesses_deinit();
 	event_set_ptr(cctx->event, SETTINGS_EVENT_ROOT, NULL);
 
 	main_deinit();

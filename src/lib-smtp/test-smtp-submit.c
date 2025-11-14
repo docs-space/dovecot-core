@@ -15,6 +15,7 @@
 #include "master-service.h"
 #include "istream-dot.h"
 #include "test-common.h"
+#include "test-dir.h"
 #include "test-subprocess.h"
 
 #include "smtp-address.h"
@@ -2002,7 +2003,9 @@ static int test_open_server_fd(in_port_t *bind_port)
 
 static void test_tmp_dir_init(void)
 {
-	tmp_dir = i_strdup_printf("/tmp/dovecot-test-smtp-client.%s.%s",
+	static unsigned int seq = 0;
+
+	tmp_dir = i_strdup_printf("%s/test-%u.%s.%s", test_dir_get(), seq++,
 				  dec2str(time(NULL)), dec2str(getpid()));
 }
 
@@ -2189,7 +2192,11 @@ int main(int argc, char *argv[])
 	}
 
 	master_service_init_finish(master_service);
-	test_subprocesses_init(debug);
+
+	test_init();
+	event_set_forced_debug(test_event, debug);
+	test_dir_init("smtp-submit");
+	test_subprocesses_init();
 
 	/* listen on localhost */
 	i_zero(&bind_ip);
@@ -2198,7 +2205,6 @@ int main(int argc, char *argv[])
 
 	ret = test_run(test_functions);
 
-	test_subprocesses_deinit();
 	main_deinit();
 	master_service_deinit(&master_service);
 
