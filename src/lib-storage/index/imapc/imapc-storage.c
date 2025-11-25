@@ -785,7 +785,8 @@ int imapc_mailbox_select(struct imapc_mailbox *mbox)
 	}
 
 	mbox->client_box =
-		imapc_client_mailbox_open(mbox->storage->client->client, mbox);
+		imapc_client_mailbox_open(mbox->storage->client->client,
+					  mailbox_get_name(&mbox->box), mbox);
 	imapc_client_mailbox_set_reopen_cb(mbox->client_box,
 					   imapc_mailbox_reopen, mbox);
 
@@ -979,6 +980,8 @@ static void imapc_untagged_status(const struct imapc_untagged_reply *reply,
 			status->uidvalidity = num;
 		else if (strcasecmp(key, "UNSEEN") == 0)
 			status->unseen = num;
+		else if (strcasecmp(key, "DELETED") == 0)
+			status->deleted = num;
 		else if (strcasecmp(key, "HIGHESTMODSEQ") == 0 &&
 			 imapc_mailbox_has_modseqs(storage->cur_status_box))
 			status->highest_modseq = num;
@@ -1152,6 +1155,33 @@ static int imapc_mailbox_delete(struct mailbox *box)
 	return index_storage_mailbox_delete(box);
 }
 
+int imapc_server_unselect(struct imapc_storage_client *client)
+{
+	enum imapc_capability caps;
+	if (imapc_client_get_capabilities(client->client, &caps) < 0)
+		return -1;
+
+	struct imapc_simple_context sctx;
+	imapc_simple_context_init(&sctx, client);
+
+	struct imapc_command *cmd = imapc_client_cmd(client->client,
+						     imapc_simple_callback, &sctx);
+
+	if ((caps & IMAPC_CAPABILITY_UNSELECT) != 0) {
+		imapc_command_set_flags(cmd, IMAPC_COMMAND_FLAG_UNSELECT);
+		imapc_command_sendf(cmd, "UNSELECT");
+	} else {
+		char sep = client->_list->root_sep;
+		char nonexistent_mailbox[] = { sep, sep, sep, '\0' };
+
+		imapc_command_set_flags(cmd, IMAPC_COMMAND_FLAG_SELECT);
+		imapc_command_sendf(cmd, "SELECT %s", nonexistent_mailbox);
+	}
+
+	imapc_simple_run(&sctx, &cmd);
+	return 0;
+}
+
 static int imapc_mailbox_run_status(struct mailbox *box,
 				    enum mailbox_status_items items,
 				    struct mailbox_status *status_r)
@@ -1170,6 +1200,8 @@ static int imapc_mailbox_run_status(struct mailbox *box,
 	if ((items & STATUS_RECENT) != 0 &&
 	    (box->enabled_features & MAILBOX_FEATURE_IMAP4REV2) == 0)
 		str_append(str, " RECENT");
+	if ((items & STATUS_DELETED) != 0)
+		str_append(str, " DELETED");
 	if ((items & STATUS_UIDNEXT) != 0)
 		str_append(str, " UIDNEXT");
 	if ((items & STATUS_UIDVALIDITY) != 0)
@@ -1183,6 +1215,17 @@ static int imapc_mailbox_run_status(struct mailbox *box,
 	if (str_len(str) == 0) {
 		/* nothing requested */
 		return 0;
+	}
+
+	if (imapc_client_is_server_selected(mbox->storage->client->client,
+					    mailbox_get_name(box))) {
+		/* Our local imap session is no longer selecting the folder,
+		   (this is handled in the imap layer above us), but the remote
+		   side still has the mailbox selected. This would cause the
+		   STATUS command below to not work as intended - so, deselect
+		   on the remote side */
+		if (imapc_server_unselect(mbox->storage->client) < 0)
+			return -1;
 	}
 
 	imapc_simple_context_init(&sctx, mbox->storage->client);

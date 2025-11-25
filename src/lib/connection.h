@@ -136,7 +136,10 @@ struct connection {
 	struct ioloop *ioloop;
 	/* Input handler (removed when connection is halted). */
 	struct io *io;
-	/* IO streams. */
+	/* IO streams. These are immediately non-NULL after connection_init().
+	   If a client connection hasn't finished yet, they point to error
+	   iostreams. After a disconnection the streams still exist in closed
+	   state. They won't be NULL until connection_deinit(). */
 	struct istream *input;
 	struct ostream *output;
 
@@ -188,6 +191,8 @@ struct connection {
 	/* Reason for disconnection */
 	enum connection_disconnect_reason disconnect_reason;
 
+	/* Client connect() succeeded. */
+	bool client_connect_succeeded:1;
 	/* We have received a version from remote end. */
 	bool version_received:1;
 	/* Set if this is a unix socket. */
@@ -250,7 +255,8 @@ int connection_client_connect_async(struct connection *conn);
 int connection_client_connect_with_retries(struct connection *conn,
 					   unsigned int msecs);
 
-/* Disconnects a connection */
+/* Disconnects a connection. The input/output streams are closed, but not
+   destroyed. */
 void connection_disconnect(struct connection *conn);
 
 /* Deinitializes a connection, calls disconnect */

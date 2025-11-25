@@ -277,6 +277,14 @@ imapc_client_cmd(struct imapc_client *client,
 	return imapc_connection_cmd(conn, callback, context);
 }
 
+bool imapc_client_is_server_selected(struct imapc_client *client,
+				     const char *name)
+{
+	struct imapc_connection *conn = imapc_client_find_connection(client);
+	const char *conn_name = imapc_connection_get_selected_mailbox_name(conn);
+	return null_strcmp(conn_name, name) == 0;
+}
+
 static struct imapc_client_connection *
 imapc_client_get_unboxed_connection(struct imapc_client *client)
 {
@@ -351,7 +359,7 @@ void imapc_client_logout(struct imapc_client *client)
 }
 
 struct imapc_client_mailbox *
-imapc_client_mailbox_open(struct imapc_client *client,
+imapc_client_mailbox_open(struct imapc_client *client, const char *name,
 			  void *untagged_box_context)
 {
 	struct imapc_client_mailbox *box;
@@ -360,6 +368,7 @@ imapc_client_mailbox_open(struct imapc_client *client,
 	box = i_new(struct imapc_client_mailbox, 1);
 	box->client = client;
 	box->untagged_box_context = untagged_box_context;
+	box->name = i_strdup(name);
 	conn = imapc_client_get_unboxed_connection(client);
 	conn->box = box;
 	box->conn = conn->conn;
@@ -400,7 +409,7 @@ void imapc_client_mailbox_close(struct imapc_client_mailbox **_box)
 	box->closing = TRUE;
 
 	/* cancel any pending commands */
-	imapc_connection_unselect(box, FALSE);
+	imapc_connection_mailbox_closed(box, FALSE);
 
 	if (box->reconnecting) {
 		/* need to abort the reconnection so it won't try to access
@@ -421,6 +430,7 @@ void imapc_client_mailbox_close(struct imapc_client_mailbox **_box)
 
 	imapc_msgmap_deinit(&box->msgmap);
 	timeout_remove(&box->to_send_idle);
+	i_free(box->name);
 	i_free(box);
 }
 

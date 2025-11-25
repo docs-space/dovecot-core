@@ -57,7 +57,9 @@ enum imapc_command_flags {
 	/* This is the LOGOUT command. Use a small timeout for it. */
 	IMAPC_COMMAND_FLAG_LOGOUT	= 0x08,
 	/* Command is being resent after a reconnection. */
-	IMAPC_COMMAND_FLAG_RECONNECTED	= 0x10
+	IMAPC_COMMAND_FLAG_RECONNECTED	= 0x10,
+	/* The command unselects the mailbox (UNSELECT) */
+	IMAPC_COMMAND_FLAG_UNSELECT	= 0x20,
 };
 
 struct imapc_command_reply {
@@ -181,7 +183,7 @@ void imapc_client_stop(struct imapc_client *client);
 bool imapc_client_is_running(struct imapc_client *client);
 
 struct imapc_client_mailbox *
-imapc_client_mailbox_open(struct imapc_client *client,
+imapc_client_mailbox_open(struct imapc_client *client, const char *name,
 			  void *untagged_box_context);
 void imapc_client_mailbox_set_reopen_cb(struct imapc_client_mailbox *box,
 					void (*callback)(void *context),
@@ -212,5 +214,7 @@ void imapc_client_register_state_change_callback(struct imapc_client *client,
 						 void *context);
 
 bool imapc_client_is_ssl(struct imapc_client *client);
+bool imapc_client_is_server_selected(struct imapc_client *client,
+				     const char *name);
 
 #endif

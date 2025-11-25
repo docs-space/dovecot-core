@@ -37,8 +37,21 @@ enum pop3c_client_state {
 	/* Post-authentication, asking for capabilities */
 	POP3C_CLIENT_STATE_CAPA,
 	/* Authenticated, ready to accept commands */
-	POP3C_CLIENT_STATE_DONE
+	POP3C_CLIENT_STATE_DONE,
+
+	POP3C_CLIENT_STATE_COUNT
 };
+static const char *pop3c_client_state_names[] = {
+	"disconnected",
+	"connecting",
+	"starttls",
+	"USER",
+	"AUTH",
+	"PASS",
+	"CAPA",
+	"authenticated",
+};
+static_assert_array_size(pop3c_client_state_names, POP3C_CLIENT_STATE_COUNT);
 
 struct pop3c_client_sync_cmd_ctx {
 	enum pop3c_command_state state;
@@ -231,7 +244,8 @@ static void pop3c_client_timeout(struct pop3c_client *client)
 		break;
 	default:
 		e_error(client->event,
-			"Authentication timed out after %u seconds",
+			"Timed out in state %s after %u seconds",
+			pop3c_client_state_names[client->state],
 			POP3C_CONNECT_TIMEOUT_MSECS/1000);
 		break;
 	}
@@ -370,7 +384,8 @@ pop3c_client_get_sasl_plain_request(struct pop3c_client *client)
 static void pop3c_client_login_finished(struct pop3c_client *client)
 {
 	io_remove(&client->io);
-	client->io = io_add(client->fd, IO_READ, pop3c_client_input, client);
+	client->io = io_add_istream(client->input,
+				    pop3c_client_input, client);
 
 	timeout_remove(&client->to);
 	client->state = POP3C_CLIENT_STATE_DONE;
@@ -472,6 +487,7 @@ pop3c_client_prelogin_input_line(struct pop3c_client *client, const char *line)
 		break;
 	case POP3C_CLIENT_STATE_DISCONNECTED:
 	case POP3C_CLIENT_STATE_DONE:
+	case POP3C_CLIENT_STATE_COUNT:
 		i_unreached();
 	}
 	return 0;
@@ -581,6 +597,11 @@ static int pop3c_client_ssl_init(struct pop3c_client *client)
 		iostream_rawlog_create(client->set.rawlog_dir,
 				       &client->input, &client->output);
 	}
+
+	i_assert(client->io != NULL);
+	io_remove(&client->io);
+	client->io = io_add_istream(client->input,
+				    pop3c_client_prelogin_input, client);
 	return 0;
 }
 

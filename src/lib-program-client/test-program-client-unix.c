@@ -295,6 +295,7 @@ static void test_program_success(void)
 
 	buffer_t *output = buffer_create_dynamic(default_pool, 16);
 	struct ostream *os = test_ostream_create(output);
+	o_stream_set_no_error_handling(os, TRUE);
 	program_client_set_output(pc, os);
 
 	program_client_run_async(pc, test_program_async_callback, &ret);
@@ -333,6 +334,8 @@ static void test_program_io_common(const char *const *args)
 
 	test_assert(ret == 1);
 	test_assert(strcmp(str_c(output), pclient_test_io_string) == 0);
+	if (o_stream_finish(os) < 0)
+		i_error("o_stream_finish() failed: %s", o_stream_get_error(os));
 
 	program_client_destroy(&pc);
 
@@ -378,6 +381,7 @@ static void test_program_failure(void)
 
 	buffer_t *output = buffer_create_dynamic(default_pool, 16);
 	struct ostream *os = test_ostream_create(output);
+	o_stream_set_no_error_handling(os, TRUE);
 	program_client_set_output(pc, os);
 
 	program_client_run_async(pc, test_program_async_callback, &ret);

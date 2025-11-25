@@ -23,7 +23,7 @@ noinst_LTLIBRARIES=libdregex.la
 
 if BUILD_LIBREGEX
 libdregex_la_SOURCES = regex.c
-libdregex_la_LIBADD = $(LIBPCRE_LIBS)
+libdregex_la_LIBADD = $(LIBPCRE_LIBS_STATIC) $(LIBPCRE_LIBS)
 
 EXTRA_DIST =
 
@@ -33,7 +33,7 @@ test_regex_SOURCES = test-regex.c
 test_regex_LDADD = libdregex.la \
 		   ../lib-test/libtest.la \
 		   ../lib/liblib.la \
-		   $(LIBPCRE_LIBS)
+		   $(LIBDOVECOT_TEST_LIBS)
 test_regex_DEPENDENCIES = libdregex.la
 
 else
