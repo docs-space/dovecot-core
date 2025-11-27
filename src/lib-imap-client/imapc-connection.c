@@ -784,7 +784,6 @@ imapc_connection_parse_capability(struct imapc_connection *conn,
 				  const char *value)
 {
 	const char *const *tmp;
-	unsigned int i;
 
 	e_debug(conn->event, "Server capabilities: %s", value);
 
@@ -793,34 +792,20 @@ imapc_connection_parse_capability(struct imapc_connection *conn,
 		p_strsplit_free(default_pool, conn->capabilities_list);
 	conn->capabilities_list = p_strsplit(default_pool, value, " ");
 
-	for (tmp = t_strsplit(value, " "); *tmp != NULL; tmp++) {
-		for (i = 0; imapc_capability_names[i].name != NULL; i++) {
-			const struct imapc_capability_name *cap =
-				&imapc_capability_names[i];
-
-			if (strcasecmp(*tmp, cap->name) == 0) {
-				conn->capabilities |= cap->capability;
-				break;
-			}
-		}
-	}
+	for (tmp = t_strsplit(value, " "); *tmp != NULL; tmp++)
+		conn->capabilities |= imapc_capability_lookup(*tmp);
 
 	if ((conn->capabilities & IMAPC_CAPABILITY_IMAP4REV1) == 0) {
 		imapc_connection_input_error(conn,
 			"CAPABILITY list is missing IMAP4REV1");
 		return -1;
 	}
-	if ((conn->client->set->parsed_features & IMAPC_FEATURE_NO_QRESYNC) != 0)
-		conn->capabilities &= ENUM_NEGATE(IMAPC_CAPABILITY_QRESYNC);
-	if ((conn->client->set->parsed_features & IMAPC_FEATURE_NO_IMAP4REV2) != 0)
-		conn->capabilities &= ENUM_NEGATE(IMAPC_CAPABILITY_IMAP4REV2);
-	else {
+	conn->capabilities &= ENUM_NEGATE(conn->client->set->parsed_disabled_capabilities);
 #ifndef EXPERIMENTAL_IMAP4REV2
-		e_debug(conn->event,
-			"Disable IMAP4REV2 capability, as it is not supported with this build");
-		conn->capabilities &= ENUM_NEGATE(IMAPC_CAPABILITY_IMAP4REV2);
+	e_debug(conn->event,
+		"Disable IMAP4REV2 capability, as it is not supported with this build");
+	conn->capabilities &= ENUM_NEGATE(IMAPC_CAPABILITY_IMAP4REV2);
 #endif
-	}
 
 	return 0;
 }

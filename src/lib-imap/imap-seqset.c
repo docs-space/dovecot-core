@@ -1,6 +1,7 @@
 /* Copyright (c) 2002-2018 Dovecot authors, see the included COPYING file */
 
 #include "lib.h"
+#include "array.h"
 #include "imap-seqset.h"
 
 static uint32_t get_next_number(const char **str)
@@ -72,16 +73,14 @@ int imap_seq_set_parse(const char *str, ARRAY_TYPE(seq_range) *dest)
 {
 	uint32_t seq1, seq2;
 
-	while (*str != '\0') {
+	do {
 		if (get_next_seq_range(&str, &seq1, &seq2) < 0)
 			return -1;
 		seq_range_array_add_range(dest, seq1, seq2);
 
 		if (*str == ',')
 			str++;
-		else if (*str != '\0')
-			return -1;
-	}
+	} while (*str != '\0');
 	return 0;
 }
 
@@ -93,6 +92,37 @@ int imap_seq_set_nostar_parse(const char *str, ARRAY_TYPE(seq_range) *dest)
 	if (seq_range_exists(dest, (uint32_t)-1)) {
 		/* '*' used */
 		return -1;
+	}
+	return 0;
+}
+
+int imap_seq_set_ordered_parse(const char *str, ARRAY_TYPE(uint32_t) *dest)
+{
+	uint32_t seq1, seq2;
+
+	for (;;) {
+		seq1 = get_next_number(&str);
+		if (seq1 == 0)
+			return -1;
+		if (*str != ':')
+			seq2 = seq1;
+		else {
+			str++;
+			seq2 = get_next_number(&str);
+			if (seq2 == 0)
+				return -1;
+		}
+		if (seq1 > seq2)
+			return -1;
+
+		for (uint32_t seq = seq1; seq <= seq2; seq++)
+			array_push_back(dest, &seq);
+
+		if (*str == '\0')
+			break;
+		if (*str != ',')
+			return -1;
+		str++;
 	}
 	return 0;
 }
