@@ -6,4 +6,5 @@ sudo apt update
 sudo apt-get install -y zip unzip
 
 cd $DIR_FILES/Pack/src/ && sudo zip -r $DIR_FILES/Packages/r7mdaserver_${VERSION}.zip *
+cp $DIR_FILES/dovecot-config $DIR_FILES/Packages/
 sudo md5sum $DIR_FILES/Packages/r7mdaserver_${VERSION}.zip >> $DIR_FILES/Packages/md5.txt
