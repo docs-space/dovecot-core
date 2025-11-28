@@ -859,6 +859,7 @@ bool login_proxy_failed(struct login_proxy *proxy, struct event *event,
 		break;
 	case LOGIN_PROXY_FAILURE_TYPE_AUTH_REPLIED:
 	case LOGIN_PROXY_FAILURE_TYPE_AUTH_NOT_REPLIED:
+	case LOGIN_PROXY_FAILURE_TYPE_AUTH_LIMIT_REACHED_REPLIED:
 		log_prefix = "";
 		try_reconnect = FALSE;
 		break;
@@ -883,7 +884,12 @@ bool login_proxy_failed(struct login_proxy *proxy, struct event *event,
 		return TRUE;
 	}
 
+	i_free(proxy->client->last_proxy_auth_failure_reason);
+	proxy->client->last_proxy_auth_failure_reason =
+		i_strdup_printf("%s%s", log_prefix, reason);
+
 	if (type != LOGIN_PROXY_FAILURE_TYPE_AUTH_REPLIED &&
+	    type != LOGIN_PROXY_FAILURE_TYPE_AUTH_LIMIT_REACHED_REPLIED &&
 	    type != LOGIN_PROXY_FAILURE_TYPE_AUTH_NOT_REPLIED &&
 	    type != LOGIN_PROXY_FAILURE_TYPE_AUTH_TEMPFAIL)
 		e_error(event, "%s%s", log_prefix, reason);

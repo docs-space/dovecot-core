@@ -639,6 +639,7 @@ bool client_unref(struct client **_client)
 	i_free(client->virtual_user_orig);
 	i_free(client->virtual_auth_user);
 	i_free(client->auth_mech_name);
+	i_free(client->last_proxy_auth_failure_reason);
 	i_free(client->master_data_prefix);
 	pool_unref(&client->pool);
 
@@ -1466,6 +1467,10 @@ bool client_get_extra_disconnect_reason(struct client *client,
 			event_reason = "redirected";
 			last_reason = "redirected";
 			break;
+		case LOGIN_PROXY_FAILURE_TYPE_AUTH_LIMIT_REACHED_REPLIED:
+			event_reason = "connection_limit";
+			last_reason = "connection limit reached";
+			break;
 		default:
 			i_unreached();
 		}
@@ -1501,6 +1506,10 @@ bool client_get_extra_disconnect_reason(struct client *client,
 	}
 
 	str_printfa(str, "in %u secs", auth_secs);
+	if (client->last_proxy_auth_failure_reason != NULL) {
+		str_printfa(str, ", last failure: %s",
+			    str_sanitize(client->last_proxy_auth_failure_reason, 160));
+	}
 	*human_reason_r = str_c(str);
 	i_assert(*event_reason_r != NULL);
 	return TRUE;

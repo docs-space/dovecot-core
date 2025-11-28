@@ -302,6 +302,9 @@ void client_send_reply(struct client *client, enum pop3_cmd_reply reply,
 	case POP3_CMD_REPLY_TEMPFAIL:
 		prefix = "-ERR [SYS/TEMP]";
 		break;
+	case POP3_CMD_REPLY_LIMIT:
+		prefix = "-ERR [IN-USE]";
+		break;
 	case POP3_CMD_REPLY_AUTH_ERROR:
 		if (text[0] == '[')
 			prefix = "-ERR";
@@ -376,6 +379,7 @@ static struct client_vfuncs pop3_client_vfuncs = {
 
 static struct login_binary pop3_login_binary = {
 	.protocol = "pop3",
+	.service_name = "pop3",
 	.process_name = "pop3-login",
 	.default_port = POP3_DEFAULT_PORT,
 	.default_ssl_port = POP3S_DEFAULT_PORT,
