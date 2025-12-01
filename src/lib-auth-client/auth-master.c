@@ -1304,10 +1304,6 @@ auth_user_list_reply_callback(const struct auth_master_reply *reply,
 		return -1;
 	}
 
-	/* We'll just read all the users into memory. otherwise we'd have to use
-	   a separate connection for listing and there's a higher chance of a
-	   failure since the connection could be open to dovecot-auth for a long
-	   time. */
 	str_append(ctx->username, args[0]);
 	return 0;
 }
@@ -1383,8 +1379,9 @@ auth_master_user_do_list_next(struct auth_master_user_list_ctx *ctx)
 		ctx->req = NULL;
 	connection_input_halt(&conn->conn);
 
-	if (ctx->finished || ctx->failed)
+	if (ctx->finished || ctx->failed || ctx->req == NULL)
 		return NULL;
+	i_assert(str_len(ctx->username) > 0);
 	return str_c(ctx->username);
 }
 
