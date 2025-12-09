@@ -1,3 +1,5 @@
+#!/usr/bin/bash
+
 VERSION=$1
 BUILD_DIRECTORY=/opt/r7-mailserver/mdaserver
 PACK_DIRECTORY=$2/Pack/src/opt/r7-mailserver/
@@ -61,7 +63,6 @@ CONFIGURE_ARGS+=("--without-systemd")
 ./configure "${CONFIGURE_ARGS[@]}"
 
 ##Компоновка
-sudo make -j V=0
 
 ## Сборка
 sudo make install-strip
