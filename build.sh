@@ -27,11 +27,38 @@ sudo make distclean || true
 ## Automake
 sudo ./autogen.sh $VERSION
 
+
 ## Конфигурирование пакетов
-sudo ./configure --with-ldap=plugin --with-sql=plugin --with-lua=plugin --with-pgsql --with-mysql --with-sqlite --with-gssapi=plugin --with-solr --with-flatcurve --with-icu --with-lz4 --with-zstd --with-bzlib --with-stemmer --with-textcat --with-libcap --enable-experimental-mail-utf8 --with-retpoline=thunk --disable-static \
---prefix=$BUILD_DIRECTORY \
---exec-prefix=$BUILD_DIRECTORY \
---without-systemd
+#sudo ./configure --with-ldap=plugin --with-sql=plugin --with-lua=plugin --with-pgsql --with-mysql --with-sqlite --with-gssapi=plugin --with-solr --with-flatcurve --with-icu --with-lz4 --with-zstd --with-bzlib --with-stemmer --with-textcat --with-libcap --enable-experimental-mail-utf8 --with-retpoline=thunk --disable-static \
+#--prefix=$BUILD_DIRECTORY \
+#--exec-prefix=$BUILD_DIRECTORY \
+#--without-systemd
+CONFIGURE_ARGS=()
+CONFIGURE_ARGS+=("--with-ldap=plugin")
+CONFIGURE_ARGS+=("--with-sql=plugin")
+CONFIGURE_ARGS+=("--with-lua=plugin")
+CONFIGURE_ARGS+=("--with-pgsql")
+CONFIGURE_ARGS+=("--with-mysql")
+CONFIGURE_ARGS+=("--with-sqlite")
+CONFIGURE_ARGS+=("--with-gssapi=plugin")
+CONFIGURE_ARGS+=("--with-solr")
+CONFIGURE_ARGS+=("--with-flatcurve")
+#CONFIGURE_ARGS+=("--with-icu")
+CONFIGURE_ARGS+=("--with-lz4")
+CONFIGURE_ARGS+=("--with-zstd")
+CONFIGURE_ARGS+=("--with-bzlib")
+CONFIGURE_ARGS+=("--with-stemmer")
+CONFIGURE_ARGS+=("--with-textcat")
+CONFIGURE_ARGS+=("--with-libcap")
+CONFIGURE_ARGS+=("--enable-experimental-mail-utf8")
+CONFIGURE_ARGS+=("--with-retpoline=thunk")
+CONFIGURE_ARGS+=("--disable-static")
+CONFIGURE_ARGS+=("--prefix=$BUILD_DIRECTORY")
+CONFIGURE_ARGS+=("--exec-prefix=$BUILD_DIRECTORY")
+CONFIGURE_ARGS+=("--without-systemd")
+
+# Выполняем команду
+./configure "${CONFIGURE_ARGS[@]}"
 
 ##Компоновка
 sudo make -j V=0
