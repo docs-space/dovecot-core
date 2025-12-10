@@ -25,22 +25,25 @@ Description: Database password:
 
 Template: r7mdaserver/mda-ssl-cert
 Type: string
-Default: fullchain1.pem
+Default: /full-path-to/certificate.pem
 Description: Certificate filename for MDA server:
+(If the certificate file is not found, a self-signed certificate will be generated.)
 
 Template: r7mdaserver/mda-ssl-key
 Type: string
-Default: privkey1.pem
+Default: /full-path-to/key.pem
 Description: Key filename for MDA server:
+(If the key file is not found, a self-signed certificate will be generated.)
 
 Template: r7mdaserver/mda-dh-key
 Type: string
-Default: dhparam.pem
-Description: Diffie–Hellman key filename for MDA server:
+Default: /full-path-to/dhparam.pem
+Description: Diffie–Hellman key filename for MDA server ():
+(If the Diffie-Hellman key file is not found, a new one will be generated.)
 
 Template: r7mdaserver/mda-doveadm-key
 Type: password
-Description: Key for API:
+Description: X-Dovecot-API key for Doveadm HTTP-API:
 
 Template: r7mdaserver/upgrade
 Type: boolean
