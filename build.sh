@@ -28,7 +28,8 @@ sudo make distclean || true
 #Сборка Ядра:
 
 ## Automake
-sudo ./autogen.sh $VERSION
+#sudo ./autogen.sh $VERSION
+sudo ./autogen.sh 2.4.2
 
 
 ## Конфигурирование пакетов
@@ -58,17 +59,17 @@ CONFIGURE_ARGS+=("--with-retpoline=thunk")
 CONFIGURE_ARGS+=("--disable-static")
 CONFIGURE_ARGS+=("--prefix=$BUILD_DIRECTORY")
 CONFIGURE_ARGS+=("--exec-prefix=$BUILD_DIRECTORY")
-CONFIGURE_ARGS+=("--without-systemd")
+CONFIGURE_ARGS+=("--with-systemd")
 
 # Выполняем команду
-./configure "${CONFIGURE_ARGS[@]}"
+sudo ./configure "${CONFIGURE_ARGS[@]}"
 
 ##Компоновка
 
 ## Сборка
 sudo make install-strip
 
-cp -r $BUILD_DIRECTORY $PACK_DIRECTORY
+sudo cp -r $BUILD_DIRECTORY $PACK_DIRECTORY
 
 
 # Добавление необходимых пользователей
