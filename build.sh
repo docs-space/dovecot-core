@@ -12,7 +12,7 @@ sudo apt-get install -y \
   build-essential make autoconf automake libtool bison flex autotools-dev \
   libssl-dev libldap2-dev libbz2-dev zlib1g-dev liblz4-dev libzstd-dev libcap-dev libsodium-dev libunwind-dev libwrap0-dev libkrb5-dev libpq-dev libsqlite3-dev libexpat1-dev \
   liblua5.3-dev libxapian-dev libstemmer-dev libsasl2-dev krb5-multidev libdb-dev libcurl4-gnutls-dev libexpat-dev libexttextcat-dev default-libmysqlclient-dev \
-  libpcre3-dev libcdb-dev liblzma-dev liblmdb-dev libunbound-dev libmagic-dev libicu72 
+  libpcre3-dev libcdb-dev liblzma-dev liblmdb-dev libunbound-dev libmagic-dev libicu72 libsystemd-dev
   #libicu-dev
 
 #Переменная окружения:
