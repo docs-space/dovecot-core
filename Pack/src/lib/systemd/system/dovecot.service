@@ -15,7 +15,7 @@ After=local-fs.target network-online.target
 
 [Service]
 Type=notify
-ExecStart=/opt/r7-mailserver/mdaserver/sbin/dovecot -F -c "/etc/dovecot/dovecot.conf"
+ExecStart=/opt/r7-mailserver/mdaserver/sbin/dovecot -F
 ExecReload=/opt/r7-mailserver/mdaserver/bin/doveadm reload
 ExecStop=/opt/r7-mailserver/mdaserver/bin/doveadm stop
 PrivateTmp=true
