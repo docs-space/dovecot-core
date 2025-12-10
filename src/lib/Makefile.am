@@ -16,11 +16,15 @@ BUILT_SOURCES = $(srcdir)/unicode-data-tables.c \
 
 UCD_URL = https://dovecot.org/res
 UCD_DIR = $(srcdir)/ucd
+UCD_ABS_DIR = $(abs_srcdir)/ucd
 UCD_FILES = \
 	$(UCD_DIR)/CaseFolding.txt \
 	$(UCD_DIR)/CompositionExclusions.txt \
 	$(UCD_DIR)/DerivedCoreProperties.txt \
 	$(UCD_DIR)/DerivedNormalizationProps.txt \
+	$(UCD_DIR)/emoji-data.txt \
+	$(UCD_DIR)/GraphemeBreakProperty.txt \
+	$(UCD_DIR)/GraphemeBreakTest.txt \
 	$(UCD_DIR)/NormalizationTest.txt \
 	$(UCD_DIR)/PropertyValueAliases.txt \
 	$(UCD_DIR)/PropList.txt \
@@ -65,6 +69,12 @@ $(UCD_DIR)/DerivedCoreProperties.txt:
 	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/DerivedCoreProperties.txt
 $(UCD_DIR)/DerivedNormalizationProps.txt:
 	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/DerivedNormalizationProps.txt
+$(UCD_DIR)/emoji-data.txt:
+	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/emoji-data.txt
+$(UCD_DIR)/GraphemeBreakProperty.txt:
+	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/GraphemeBreakProperty.txt
+$(UCD_DIR)/GraphemeBreakTest.txt:
+	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/GraphemeBreakTest.txt
 $(UCD_DIR)/NormalizationTest.txt:
 	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/NormalizationTest.txt
 $(UCD_DIR)/PropertyValueAliases.txt:
@@ -240,6 +250,7 @@ liblib_la_SOURCES = \
 	unlink-directory.c \
 	unlink-old-files.c \
 	unichar.c \
+	unicode-break.c \
 	unicode-data-types.c \
 	unicode-data-tables.c \
 	unicode-data.c \
@@ -405,6 +416,7 @@ headers = \
 	unlink-directory.h \
 	unlink-old-files.h \
 	unichar.h \
+	unicode-break.h \
 	unicode-data-static.h \
 	unicode-data-types.h \
 	unicode-data-tables.h \
@@ -421,7 +433,7 @@ test_programs = test-lib test-cpu-limit
 
 test_lib_CPPFLAGS = \
 	-I$(top_srcdir)/src/lib-test \
-	-DUCD_DIR=\"$(UCD_DIR)\"
+	-DUCD_DIR=\"$(UCD_ABS_DIR)\"
 
 test_libs = \
 	../lib-test/libtest.la \
@@ -517,6 +529,7 @@ test_lib_SOURCES = \
 	test-str-table.c \
 	test-time-util.c \
 	test-unichar.c \
+	test-unicode-break.c \
 	test-unicode-data.c \
 	test-unicode-nf.c \
 	test-unicode-casemap.c \

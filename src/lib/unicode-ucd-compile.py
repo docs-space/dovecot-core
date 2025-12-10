@@ -15,6 +15,7 @@ ud_codepoints = []
 ud_codepoints_first = []
 ud_codepoints_last = []
 ud_codepoints_index = {}
+ud_codepoints_defaults = []
 
 ud_codepoints_index8 = {}
 ud_codepoints_index16 = {}
@@ -74,6 +75,39 @@ class CodePointData:
             if default and hasattr(self, attr):
                 continue
             setattr(self, attr, getattr(data, attr))
+
+    def isEmpty(self):
+        empty = True
+        for attr in dir(self):
+            if callable(getattr(self, attr)):
+                continue
+            if attr.startswith("__"):
+                continue
+            empty = False
+        return empty
+
+    def equals(self, data):
+        for attr in dir(data):
+            if attr == "default_index":
+                continue
+            if callable(getattr(data, attr)):
+                continue
+            if attr.startswith("__"):
+                continue
+            if not hasattr(self, attr):
+                return False
+            if getattr(self, attr) != getattr(data, attr):
+                return False
+        for attr in dir(self):
+            if attr == "default_index":
+                continue
+            if callable(getattr(self, attr)):
+                continue
+            if attr.startswith("__"):
+                continue
+            if not hasattr(data, attr):
+                return False
+        return True
 
 
 class CodePointRange:
@@ -418,6 +452,32 @@ def read_ucd_files():
             for cp in range(cprng[0], cprng[1] + 1):
                 ud_composition_exclusions[cp] = True
 
+    # DerivedCoreProperties.txt
+    with UCDFileOpen("DerivedCoreProperties.txt") as ucd:
+        for line in ucd.fd:
+            data = line.split("#")
+            if len(data) == 0:
+                continue
+
+            if len(data[0]) == 0:
+                continue
+            columns = data[0].split(";")
+            if len(columns) < 2:
+                continue
+
+            cprng = parse_cp_range(columns[0])
+            if cprng is None:
+                continue
+
+            prop = columns[1].strip()
+            if prop != "InCB":
+                continue
+
+            value = columns[2].strip()
+            cpd = CodePointData()
+            cpd.indic_conjunct_break = value
+            CodePointRange(cprng[0], cprng[1], cpd)
+
     # DerivedNormalizationProps.txt
     with UCDFileOpen("DerivedNormalizationProps.txt") as ucd:
         line_num = 0
@@ -455,6 +515,99 @@ def read_ucd_files():
             elif prop == "NFKC_QC":
                 cpd = CodePointData()
                 cpd.nfkc_quick_check = value
+                CodePointRange(cprng[0], cprng[1], cpd)
+
+    # emoji-data.txt
+    with UCDFileOpen("emoji-data.txt") as ucd:
+        for line in ucd.fd:
+            data = line.split("#")
+            if len(data) == 0:
+                continue
+
+            if len(data[0]) == 0:
+                continue
+            columns = data[0].split(";")
+            if len(columns) < 2:
+                continue
+
+            cprng = parse_cp_range(columns[0])
+            if cprng is None:
+                continue
+
+            prop = columns[1].strip()
+            if prop != "Extended_Pictographic":
+                continue
+
+            cpd = CodePointData()
+            cpd.pb_e_extended_pictographic = True
+            CodePointRange(cprng[0], cprng[1], cpd)
+
+    # GraphemeBreakProperty.txt
+    with UCDFileOpen("GraphemeBreakProperty.txt") as ucd:
+        for line in ucd.fd:
+            data = line.split("#")
+            if len(data[0]) == 0:
+                continue
+            columns = data[0].split(";")
+            if len(columns) < 2:
+                continue
+
+            cprng = parse_cp_range(columns[0])
+            if cprng is None:
+                continue
+
+            prop = columns[1].strip()
+            if prop == "CR":
+                cpd = CodePointData()
+                cpd.pb_b_cr = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "LF":
+                cpd = CodePointData()
+                cpd.pb_b_lf = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "Control":
+                cpd = CodePointData()
+                cpd.pb_gcb_control = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "Extend":
+                cpd = CodePointData()
+                cpd.pb_gcb_extend = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "ZWJ":
+                cpd = CodePointData()
+                cpd.pb_b_zwj = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "Regional_Indicator":
+                cpd = CodePointData()
+                cpd.pb_b_regional_indicator = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "Prepend":
+                cpd = CodePointData()
+                cpd.pb_gcb_prepend = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "SpacingMark":
+                cpd = CodePointData()
+                cpd.pb_gcb_spacingmark = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "L":
+                cpd = CodePointData()
+                cpd.pb_gcb_l = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "V":
+                cpd = CodePointData()
+                cpd.pb_gcb_v = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "T":
+                cpd = CodePointData()
+                cpd.pb_gcb_t = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "LV":
+                cpd = CodePointData()
+                cpd.pb_gcb_lv = True
+                CodePointRange(cprng[0], cprng[1], cpd)
+            elif prop == "LVT":
+                cpd = CodePointData()
+                cpd.pb_gcb_lvt = True
                 CodePointRange(cprng[0], cprng[1], cpd)
 
     # PropList.txt
@@ -581,11 +734,11 @@ def read_ucd_files():
             prop = cols[1].strip()
             if prop == "CR":
                 cpd = CodePointData()
-                cpd.pb_wb_cr = True
+                cpd.pb_b_cr = True
                 CodePointRange(cprng[0], cprng[1], cpd)
             elif prop == "LF":
                 cpd = CodePointData()
-                cpd.pb_wb_lf = True
+                cpd.pb_b_lf = True
                 CodePointRange(cprng[0], cprng[1], cpd)
             elif prop == "Newline":
                 cpd = CodePointData()
@@ -597,11 +750,11 @@ def read_ucd_files():
                 CodePointRange(cprng[0], cprng[1], cpd)
             elif prop == "ZWJ":
                 cpd = CodePointData()
-                cpd.pb_wb_zwj = True
+                cpd.pb_b_zwj = True
                 CodePointRange(cprng[0], cprng[1], cpd)
             elif prop == "Regional_Indicator":
                 cpd = CodePointData()
-                cpd.pb_wb_regional_indicator = True
+                cpd.pb_b_regional_indicator = True
                 CodePointRange(cprng[0], cprng[1], cpd)
             elif prop == "Format":
                 cpd = CodePointData()
@@ -1036,14 +1189,45 @@ def update_cp_index_tables(cp_first, cp_last, cp_pos):
 
 def create_cp_index_tables():
     global ud_codepoints
+    global ud_codepoints_defaults
 
-    # Create code point index
+    # Create index for defaults
     for n in range(0, len(ud_codepoints)):
         cpr = ud_codepoints[n]
         cp_first = cpr.cp_first
         cp_last = cpr.cp_last
+        cpd = cpr.data
+        if cpd.isEmpty():
+            continue
+        if hasattr(cpd, "name"):
+            continue
 
-        update_cp_index_tables(cp_first, cp_last, n)
+        found = False
+        for d in ud_codepoints_defaults:
+            if cpd.equals(d):
+                cpr.data = d
+                found = True
+                break
+        if found:
+            continue
+
+        cpd.default_index = len(ud_codepoints_defaults)
+        ud_codepoints_defaults.append(cpd)
+
+    idx = len(ud_codepoints_defaults)
+    for n in range(0, len(ud_codepoints)):
+        cpr = ud_codepoints[n]
+        cp_first = cpr.cp_first
+        cp_last = cpr.cp_last
+        cpd = cpr.data
+
+        if cpd.isEmpty():
+            continue
+        if hasattr(cpd, "name"):
+            update_cp_index_tables(cp_first, cp_last, idx)
+            idx += 1
+        else:
+            update_cp_index_tables(cp_first, cp_last, cpd.default_index)
 
 
 def get_general_category_def(gc):
@@ -1052,6 +1236,12 @@ def get_general_category_def(gc):
 
 def decomposition_type_def(dt):
     return "UNICODE_DECOMPOSITION_TYPE_%s" % dt.upper()
+
+
+def indic_conjunct_break_def(icb):
+    icb_uc = icb.upper()
+
+    return "UNICODE_INDIC_CONJUNCT_BREAK_%s" % icb_uc
 
 
 def print_list(code_list):
@@ -1131,9 +1321,202 @@ def write_tables_h():
     sys.stdout = orig_stdout
 
 
+def write_tables_c_cpd(cpd):
+    if hasattr(cpd, "general_category"):
+        print(
+            "\t\t.general_category = %s,"
+            % get_general_category_def(cpd.general_category)
+        )
+    else:
+        print("\t\t.general_category = UNICODE_GENERAL_CATEGORY_CN,")
+    if (
+        hasattr(cpd, "canonical_combining_class")
+        and cpd.canonical_combining_class > 0
+    ):
+        print(
+            "\t\t.canonical_combining_class = %u,"
+            % cpd.canonical_combining_class
+        )
+    if (
+        hasattr(cpd, "nfd_quick_check")
+        or hasattr(cpd, "nfkd_quick_check")
+        or hasattr(cpd, "nfc_quick_check")
+        or hasattr(cpd, "nfkc_quick_check")
+    ):
+        print("\t\t.nf_quick_check = (", end="")
+        if hasattr(cpd, "nfkc_quick_check"):
+            if cpd.nfkc_quick_check == "N":
+                print("UNICODE_NFKC_QUICK_CHECK_NO", end="")
+            elif cpd.nfkc_quick_check == "M":
+                print("UNICODE_NFKC_QUICK_CHECK_MAYBE", end="")
+        if hasattr(cpd, "nfkc_quick_check") and hasattr(cpd, "nfc_quick_check"):
+            print(" |")
+            print("\t\t\t\t   ", end="")
+        if hasattr(cpd, "nfc_quick_check"):
+            if cpd.nfc_quick_check == "N":
+                print("UNICODE_NFC_QUICK_CHECK_NO", end="")
+            elif cpd.nfc_quick_check == "M":
+                print("UNICODE_NFC_QUICK_CHECK_MAYBE", end="")
+        if (
+            hasattr(cpd, "nfkc_quick_check") or hasattr(cpd, "nfc_quick_check")
+        ) and hasattr(cpd, "nfkd_quick_check"):
+            print(" |")
+            print("\t\t\t\t   ", end="")
+        if hasattr(cpd, "nfkd_quick_check"):
+            if cpd.nfkd_quick_check == "N":
+                print("UNICODE_NFKD_QUICK_CHECK_NO", end="")
+            elif cpd.nfkd_quick_check == "M":
+                print("UNICODE_NFKD_QUICK_CHECK_MAYBE", end="")
+        if (
+            hasattr(cpd, "nfkc_quick_check")
+            or hasattr(cpd, "nfc_quick_check")
+            or hasattr(cpd, "nfkd_quick_check")
+        ) and hasattr(cpd, "nfd_quick_check"):
+            print(" |")
+            print("\t\t\t\t   ", end="")
+        if hasattr(cpd, "nfd_quick_check"):
+            if cpd.nfd_quick_check == "N":
+                print("UNICODE_NFD_QUICK_CHECK_NO", end="")
+            elif cpd.nfd_quick_check == "M":
+                print("UNICODE_NFD_QUICK_CHECK_MAYBE", end="")
+        print("),")
+    if hasattr(cpd, "decomposition_type"):
+        print(
+            "\t\t.decomposition_type = %s,"
+            % decomposition_type_def(cpd.decomposition_type)
+        )
+    if hasattr(cpd, "decomposition_length"):
+        print("\t\t.decomposition_first_length = %u," % cpd.decomposition_length)
+        print("\t\t.decomposition_first_offset = %u," % cpd.decomposition_offset)
+    if hasattr(cpd, "decomposition_full_length"):
+        print(
+            "\t\t.decomposition_full_length = %u,"
+            % cpd.decomposition_full_length
+        )
+        print(
+            "\t\t.decomposition_full_offset = %u,"
+            % cpd.decomposition_full_offset
+        )
+    if hasattr(cpd, "decomposition_full_k_length"):
+        print(
+            "\t\t.decomposition_full_k_length = %u,"
+            % cpd.decomposition_full_k_length
+        )
+        print(
+            "\t\t.decomposition_full_k_offset = %u,"
+            % cpd.decomposition_full_k_offset
+        )
+    if hasattr(cpd, "composition_count"):
+        print("\t\t.composition_count = %u," % cpd.composition_count)
+        print("\t\t.composition_offset = %u," % cpd.composition_offset)
+    if (
+        hasattr(cpd, "lowercase_mapping_length")
+        and cpd.lowercase_mapping_length > 0
+    ):
+        print(
+            "\t\t.lowercase_mapping_length = %s," % cpd.lowercase_mapping_length
+        )
+        print(
+            "\t\t.lowercase_mapping_offset = %s," % cpd.lowercase_mapping_offset
+        )
+    if (
+        hasattr(cpd, "uppercase_mapping_length")
+        and cpd.uppercase_mapping_length > 0
+    ):
+        print(
+            "\t\t.uppercase_mapping_length = %s," % cpd.uppercase_mapping_length
+        )
+        print(
+            "\t\t.uppercase_mapping_offset = %s," % cpd.uppercase_mapping_offset
+        )
+    if (
+        hasattr(cpd, "casefold_mapping_length")
+        and cpd.casefold_mapping_length > 0
+    ):
+        print("\t\t.casefold_mapping_length = %s," % cpd.casefold_mapping_length)
+        print("\t\t.casefold_mapping_offset = %s," % cpd.casefold_mapping_offset)
+    if hasattr(cpd, "simple_titlecase_mapping"):
+        print(
+            "\t\t.simple_titlecase_mapping = 0x%04X,"
+            % cpd.simple_titlecase_mapping
+        )
+    if hasattr(cpd, "indic_conjunct_break"):
+        print(
+            "\t\t.indic_conjunct_break = %s,"
+            % indic_conjunct_break_def(cpd.indic_conjunct_break)
+        )
+    if hasattr(cpd, "pb_g_white_space"):
+        print("\t\t.pb_g_white_space = TRUE,")
+    if hasattr(cpd, "pb_e_extended_pictographic"):
+        print("\t\t.pb_e_extended_pictographic = TRUE,")
+    if hasattr(cpd, "pb_i_pattern_white_space"):
+        print("\t\t.pb_i_pattern_white_space = TRUE,")
+    if hasattr(cpd, "pb_m_quotation_mark"):
+        print("\t\t.pb_m_quotation_mark = TRUE,")
+    if hasattr(cpd, "pb_m_dash"):
+        print("\t\t.pb_m_dash = TRUE,")
+    if hasattr(cpd, "pb_m_sentence_terminal"):
+        print("\t\t.pb_m_sentence_terminal = TRUE,")
+    if hasattr(cpd, "pb_m_terminal_punctuation"):
+        print("\t\t.pb_m_terminal_punctuation = TRUE,")
+    if hasattr(cpd, "pb_b_cr"):
+        print("\t\t.pb_b_cr = TRUE,")
+    if hasattr(cpd, "pb_b_lf"):
+        print("\t\t.pb_b_lf = TRUE,")
+    if hasattr(cpd, "pb_b_zwj"):
+        print("\t\t.pb_b_zwj = TRUE,")
+    if hasattr(cpd, "pb_b_regional_indicator"):
+        print("\t\t.pb_b_regional_indicator = TRUE,")
+    if hasattr(cpd, "pb_gcb_control"):
+        print("\t\t.pb_gcb_control = TRUE,")
+    if hasattr(cpd, "pb_gcb_extend"):
+        print("\t\t.pb_gcb_extend = TRUE,")
+    if hasattr(cpd, "pb_gcb_prepend"):
+        print("\t\t.pb_gcb_prepend = TRUE,")
+    if hasattr(cpd, "pb_gcb_spacingmark"):
+        print("\t\t.pb_gcb_spacingmark = TRUE,")
+    if hasattr(cpd, "pb_gcb_l"):
+        print("\t\t.pb_gcb_l = TRUE,")
+    if hasattr(cpd, "pb_gcb_v"):
+        print("\t\t.pb_gcb_v = TRUE,")
+    if hasattr(cpd, "pb_gcb_t"):
+        print("\t\t.pb_gcb_t = TRUE,")
+    if hasattr(cpd, "pb_gcb_lv"):
+        print("\t\t.pb_gcb_lv = TRUE,")
+    if hasattr(cpd, "pb_gcb_lvt"):
+        print("\t\t.pb_gcb_lvt = TRUE,")
+    if hasattr(cpd, "pb_wb_newline"):
+        print("\t\t.pb_wb_newline = TRUE,")
+    if hasattr(cpd, "pb_wb_extend"):
+        print("\t\t.pb_wb_extend = TRUE,")
+    if hasattr(cpd, "pb_wb_format"):
+        print("\t\t.pb_wb_format = TRUE,")
+    if hasattr(cpd, "pb_wb_katakana"):
+        print("\t\t.pb_wb_katakana = TRUE,")
+    if hasattr(cpd, "pb_wb_hebrew_letter"):
+        print("\t\t.pb_wb_hebrew_letter = TRUE,")
+    if hasattr(cpd, "pb_wb_aletter"):
+        print("\t\t.pb_wb_aletter = TRUE,")
+    if hasattr(cpd, "pb_wb_single_quote"):
+        print("\t\t.pb_wb_single_quote = TRUE,")
+    if hasattr(cpd, "pb_wb_double_quote"):
+        print("\t\t.pb_wb_double_quote = TRUE,")
+    if hasattr(cpd, "pb_wb_midnumlet"):
+        print("\t\t.pb_wb_midnumlet = TRUE,")
+    if hasattr(cpd, "pb_wb_midletter"):
+        print("\t\t.pb_wb_midletter = TRUE,")
+    if hasattr(cpd, "pb_wb_midnum"):
+        print("\t\t.pb_wb_midnum = TRUE,")
+    if hasattr(cpd, "pb_wb_numeric"):
+        print("\t\t.pb_wb_numeric = TRUE,")
+    if hasattr(cpd, "pb_wb_extendnumlet"):
+        print("\t\t.pb_wb_extendnumlet = TRUE,")
+
+
 def write_tables_c():
     global output_dir
     global ud_codepoints
+    global ud_codepoints_defaults
     global ud_decompositions
     global ud_compositions
     global ud_composition_primaries
@@ -1156,8 +1539,16 @@ def write_tables_c():
         print("\t\t.general_category = UNICODE_GENERAL_CATEGORY_CN,")
         print("\t},")
         n = 2
+        for cpd in ud_codepoints_defaults:
+            print("\t{ // [%04X] <defaults>" % n)
+            n = n + 1
+
+            write_tables_c_cpd(cpd)
+            print("\t},")
         for cpr in ud_codepoints:
             cpd = cpr.data
+            if not hasattr(cpd, "name"):
+                continue
 
             if cpr.cp_last > cpr.cp_first:
                 range_str = "U+%04X..U+%04X" % (cpr.cp_first, cpr.cp_last)
@@ -1166,167 +1557,7 @@ def write_tables_c():
             print("\t{ // [%04X] %s: %s" % (n, range_str, cpd.name))
             n = n + 1
 
-            print(
-                "\t\t.general_category = %s,"
-                % get_general_category_def(cpd.general_category)
-            )
-            if (
-                hasattr(cpd, "canonical_combining_class")
-                and cpd.canonical_combining_class > 0
-            ):
-                print(
-                    "\t\t.canonical_combining_class = %u,"
-                    % cpd.canonical_combining_class
-                )
-            if (
-                hasattr(cpd, "nfd_quick_check")
-                or hasattr(cpd, "nfkd_quick_check")
-                or hasattr(cpd, "nfc_quick_check")
-                or hasattr(cpd, "nfkc_quick_check")
-            ):
-                print("\t\t.nf_quick_check = (", end="")
-                if hasattr(cpd, "nfkc_quick_check"):
-                    if cpd.nfkc_quick_check == "N":
-                        print("UNICODE_NFKC_QUICK_CHECK_NO", end="")
-                    elif cpd.nfkc_quick_check == "M":
-                        print("UNICODE_NFKC_QUICK_CHECK_MAYBE", end="")
-                if hasattr(cpd, "nfkc_quick_check") and hasattr(cpd, "nfc_quick_check"):
-                    print(" |")
-                    print("\t\t\t\t   ", end="")
-                if hasattr(cpd, "nfc_quick_check"):
-                    if cpd.nfc_quick_check == "N":
-                        print("UNICODE_NFC_QUICK_CHECK_NO", end="")
-                    elif cpd.nfc_quick_check == "M":
-                        print("UNICODE_NFC_QUICK_CHECK_MAYBE", end="")
-                if (
-                    hasattr(cpd, "nfkc_quick_check") or hasattr(cpd, "nfc_quick_check")
-                ) and hasattr(cpd, "nfkd_quick_check"):
-                    print(" |")
-                    print("\t\t\t\t   ", end="")
-                if hasattr(cpd, "nfkd_quick_check"):
-                    if cpd.nfkd_quick_check == "N":
-                        print("UNICODE_NFKD_QUICK_CHECK_NO", end="")
-                    elif cpd.nfkd_quick_check == "M":
-                        print("UNICODE_NFKD_QUICK_CHECK_MAYBE", end="")
-                if (
-                    hasattr(cpd, "nfkc_quick_check")
-                    or hasattr(cpd, "nfc_quick_check")
-                    or hasattr(cpd, "nfkd_quick_check")
-                ) and hasattr(cpd, "nfd_quick_check"):
-                    print(" |")
-                    print("\t\t\t\t   ", end="")
-                if hasattr(cpd, "nfd_quick_check"):
-                    if cpd.nfd_quick_check == "N":
-                        print("UNICODE_NFD_QUICK_CHECK_NO", end="")
-                    elif cpd.nfd_quick_check == "M":
-                        print("UNICODE_NFD_QUICK_CHECK_MAYBE", end="")
-                print("),")
-            if hasattr(cpd, "decomposition_type"):
-                print(
-                    "\t\t.decomposition_type = %s,"
-                    % decomposition_type_def(cpd.decomposition_type)
-                )
-            if hasattr(cpd, "decomposition_length"):
-                print("\t\t.decomposition_first_length = %u," % cpd.decomposition_length)
-                print("\t\t.decomposition_first_offset = %u," % cpd.decomposition_offset)
-            if hasattr(cpd, "decomposition_full_length"):
-                print(
-                    "\t\t.decomposition_full_length = %u,"
-                    % cpd.decomposition_full_length
-                )
-                print(
-                    "\t\t.decomposition_full_offset = %u,"
-                    % cpd.decomposition_full_offset
-                )
-            if hasattr(cpd, "decomposition_full_k_length"):
-                print(
-                    "\t\t.decomposition_full_k_length = %u,"
-                    % cpd.decomposition_full_k_length
-                )
-                print(
-                    "\t\t.decomposition_full_k_offset = %u,"
-                    % cpd.decomposition_full_k_offset
-                )
-            if hasattr(cpd, "composition_count"):
-                print("\t\t.composition_count = %u," % cpd.composition_count)
-                print("\t\t.composition_offset = %u," % cpd.composition_offset)
-            if (
-                hasattr(cpd, "lowercase_mapping_length")
-                and cpd.lowercase_mapping_length > 0
-            ):
-                print(
-                    "\t\t.lowercase_mapping_length = %s," % cpd.lowercase_mapping_length
-                )
-                print(
-                    "\t\t.lowercase_mapping_offset = %s," % cpd.lowercase_mapping_offset
-                )
-            if (
-                hasattr(cpd, "uppercase_mapping_length")
-                and cpd.uppercase_mapping_length > 0
-            ):
-                print(
-                    "\t\t.uppercase_mapping_length = %s," % cpd.uppercase_mapping_length
-                )
-                print(
-                    "\t\t.uppercase_mapping_offset = %s," % cpd.uppercase_mapping_offset
-                )
-            if (
-                hasattr(cpd, "casefold_mapping_length")
-                and cpd.casefold_mapping_length > 0
-            ):
-                print("\t\t.casefold_mapping_length = %s," % cpd.casefold_mapping_length)
-                print("\t\t.casefold_mapping_offset = %s," % cpd.casefold_mapping_offset)
-            if hasattr(cpd, "simple_titlecase_mapping"):
-                print(
-                    "\t\t.simple_titlecase_mapping = 0x%04X,"
-                    % cpd.simple_titlecase_mapping
-                )
-            if hasattr(cpd, "pb_g_white_space"):
-                print("\t\t.pb_g_white_space = TRUE,")
-            if hasattr(cpd, "pb_i_pattern_white_space"):
-                print("\t\t.pb_i_pattern_white_space = TRUE,")
-            if hasattr(cpd, "pb_m_quotation_mark"):
-                print("\t\t.pb_m_quotation_mark = TRUE,")
-            if hasattr(cpd, "pb_m_dash"):
-                print("\t\t.pb_m_dash = TRUE,")
-            if hasattr(cpd, "pb_m_sentence_terminal"):
-                print("\t\t.pb_m_sentence_terminal = TRUE,")
-            if hasattr(cpd, "pb_m_terminal_punctuation"):
-                print("\t\t.pb_m_terminal_punctuation = TRUE,")
-            if hasattr(cpd, "pb_wb_cr"):
-                print("\t\t.pb_wb_cr = TRUE,")
-            if hasattr(cpd, "pb_wb_lf"):
-                print("\t\t.pb_wb_lf = TRUE,")
-            if hasattr(cpd, "pb_wb_newline"):
-                print("\t\t.pb_wb_newline = TRUE,")
-            if hasattr(cpd, "pb_wb_extend"):
-                print("\t\t.pb_wb_extend = TRUE,")
-            if hasattr(cpd, "pb_wb_zwj"):
-                print("\t\t.pb_wb_zwj = TRUE,")
-            if hasattr(cpd, "pb_wb_regional_indicator"):
-                print("\t\t.pb_wb_regional_indicator = TRUE,")
-            if hasattr(cpd, "pb_wb_format"):
-                print("\t\t.pb_wb_format = TRUE,")
-            if hasattr(cpd, "pb_wb_katakana"):
-                print("\t\t.pb_wb_katakana = TRUE,")
-            if hasattr(cpd, "pb_wb_hebrew_letter"):
-                print("\t\t.pb_wb_hebrew_letter = TRUE,")
-            if hasattr(cpd, "pb_wb_aletter"):
-                print("\t\t.pb_wb_aletter = TRUE,")
-            if hasattr(cpd, "pb_wb_single_quote"):
-                print("\t\t.pb_wb_single_quote = TRUE,")
-            if hasattr(cpd, "pb_wb_double_quote"):
-                print("\t\t.pb_wb_double_quote = TRUE,")
-            if hasattr(cpd, "pb_wb_midnumlet"):
-                print("\t\t.pb_wb_midnumlet = TRUE,")
-            if hasattr(cpd, "pb_wb_midletter"):
-                print("\t\t.pb_wb_midletter = TRUE,")
-            if hasattr(cpd, "pb_wb_midnum"):
-                print("\t\t.pb_wb_midnum = TRUE,")
-            if hasattr(cpd, "pb_wb_numeric"):
-                print("\t\t.pb_wb_numeric = TRUE,")
-            if hasattr(cpd, "pb_wb_extendnumlet"):
-                print("\t\t.pb_wb_extendnumlet = TRUE,")
+            write_tables_c_cpd(cpd)
             print("\t},")
         print("};")
         print("")
