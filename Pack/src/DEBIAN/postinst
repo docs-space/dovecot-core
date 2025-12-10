@@ -101,7 +101,9 @@ conf_api()
 {
 #	MDA_CONF_API=$MDA_CONF_DIR/conf.d/20-doveadm.conf
 	echo "Configuring Dovecot HTTPAPI Settings"
+	MDA_INSTANCE=$(cat /proc/sys/kernel/random/uuid)
 	sed -i "s#{{ MDA_DOVEADM_KEY }}#$MDA_API_KEY#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_INSTANCE }}#$MDA_INSTANCE#g" $MDA_CONF_ENV
 }
 
 if [ "$1" = "configure" ]; then
@@ -137,6 +139,9 @@ if [ "$1" = "configure" ]; then
         --disabled-password --quiet dovenull || true
 	adduser --system --group --home /nonexistent --no-create-home --gecos "Dovecot mail user" \
         --disabled-password --quiet vmail || true
+	
+	#Linking
+	ln /opt/r7-mailserver/mdaserver/bin/* /bin
 
 	echo "Checking existing Dovecot configuration files"
 	for CONFFILE in $MDA_CONF_DIR/conf.d/*.conf $MDA_CONF_DIR/*.conf
