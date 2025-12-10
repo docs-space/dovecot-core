@@ -22,6 +22,7 @@ if [ "$1" = "purge" ] ; then
 
     userdel dovecot || true;
     userdel dovenull || true;
+    userdel vmail || true;
 
     if [ -d /run/dovecot ]; then
         rm -rf /run/dovecot

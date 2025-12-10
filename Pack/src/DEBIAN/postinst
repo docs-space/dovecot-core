@@ -125,6 +125,8 @@ if [ "$1" = "configure" ]; then
 	echo "Add user dovenull"
   	adduser --system --group --home /nonexistent --no-create-home --gecos "Dovecot login user" \
         --disabled-password --quiet dovenull || true
+	adduser --system --group --home /nonexistent --no-create-home --gecos "Dovecot mail user" \
+        --disabled-password --quiet vmail || true
 
 	echo "Checking existing Dovecot configuration files"
   	for conffile in $CONFFILES ; do
