@@ -48,13 +48,14 @@ conf_cert()
 {
 #	MDA_CONF_SSL=$MDA_CONF_DIR/conf.d/10-ssl.conf
 	echo "Checking for a certificate and keys..."
-	if [ -f "$MDA_CERT_FILENAME" ] && [ -f "$MDA_KEY_FILENAME" ] && [ -f "$MDA_DH_FILENAME" ]; then
-		echo "Keys and certificate found."
+	# Check Wildcard
+	if [ -f "$MDA_CERT_FILENAME" ] && [ -f "$MDA_KEY_FILENAME" ]; then
+		echo "Keys and certificate is found."
         cp "$MDA_CERT_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")"
         cp "$MDA_KEY_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")"
-		cp "$MDA_DH_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")"
     else
-        echo "Keys or certificate not found. Generate self-signed certificate..."
+        echo "Keys or certificate is not found."
+		echo "Generate self-signed certificate..."
         MDA_KEY_FILENAME=$MDA_CONF_DIR/ssl/temp-cert.pem
         MDA_CERT_FILENAME=$MDA_CONF_DIR/ssl/temp-key.pem
 		MDA_DH_FILENAME=$MDA_CONF_DIR/ssl/dhparam.pem
@@ -62,9 +63,18 @@ conf_cert()
         openssl genrsa -out "$MDA_KEY_FILENAME" 2048
 		echo "Generate PEM certificate"
         openssl req -new -x509 -key "$MDA_KEY_FILENAME" -out "$MDA_CERT_FILENAME" -days 365 -subj "/C=RU/ST=Moscow/L=Moscow/O=Company/CN=localhost"
+		
+    fi
+	#Check Diffie–Hellman key
+	if [ -f "$MDA_DH_FILENAME" ]; then
+		echo "Diffie–Hellman keyfile is found."
+		cp "$MDA_DH_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")"
+	else
+		echo "Diffie–Hellman keyfile is not found."
 		echo "Generate Diffie–Hellman key"
 		openssl dhparam -dsaparam -out $MDA_DH_FILENAME 2048
-    fi
+	fi
+
     chmod 644 "$MDA_CERT_FILENAME"
     chmod 600 "$MDA_KEY_FILENAME"
 	chmod 600 "$MDA_DH_FILENAME"
