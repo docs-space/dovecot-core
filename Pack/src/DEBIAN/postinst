@@ -3,7 +3,7 @@ set -e
 
 . /usr/share/debconf/confmodule
 
-MDA_CONF_DIR=/etc/dovecot
+MDA_CONF_DIR=/opt/r7-mailserver/mdaserver/etc/dovecot
 MDA_CONF_ENV=$MDA_CONF_DIR/conf.d/00-environment.conf
 
 read_params_debconf()
@@ -139,25 +139,31 @@ if [ "$1" = "configure" ]; then
         --disabled-password --quiet vmail || true
 
 	echo "Checking existing Dovecot configuration files"
-  	for conffile in $CONFFILES ; do
+	for CONFFILE in $MDA_CONF_DIR/conf.d/*.conf $MDA_CONF_DIR/*.conf
+    do
+        chmod 0640 "$CONFFILE"
+      	chgrp dovecot "$CONFFILE"
+    done
+
+  	#for conffile in $CONFFILES ; do
     # Tell ucf that the file in /opt/dovecot/usr/share/dovecot is the latest
     # maintainer version, and let it handle how to manage the real
     # configuration file in /etc/dovecot.
 #    	ucf --three-way "/opt/r7-mailserver/mdaserver/etc/dovecot/$conffile" "/etc/dovecot/$conffile"
 #	    ucfr r7mdaserver "/etc/dovecot/$conffile"
-    	if [ "$conffile" != "dovecot.conf" ] && [ -f "/etc/dovecot/$conffile" ] && [ "$(echo "$conffile" | cut -b -7)" != "conf.d/" ]; then
-      		chmod 0640 "/etc/dovecot/$conffile"
-      		chgrp dovecot "/etc/dovecot/$conffile"
-    	fi
-  	done
+#    	if [ "$conffile" != "dovecot.conf" ] && [ -f "$MDA_CONF_DIR/$conffile" ] && [ "$(echo "$conffile" | cut -b -7)" != "conf.d/" ]; then
+#      		chmod 0640 "$MDA_CONF_DIR/$conffile"
+#      		chgrp dovecot "$MDA_CONF_DIR/$conffile"
+#    	fi
+#  	done
 	
 	read_params_debconf
 	conf_cert
 	conf_db
 	conf_api
 
-  	if ! dpkg-statoverride --list /etc/dovecot/private >/dev/null; then
-    	dpkg-statoverride --quiet --update --add root root 0700 /etc/dovecot/private
+  	if ! dpkg-statoverride --list $MDA_CONF_DIR/private >/dev/null; then
+    	dpkg-statoverride --quiet --update --add root root 0700 $MDA_CONF_DIR/private
   	fi
 fi
 
