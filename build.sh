@@ -11,8 +11,9 @@ sudo apt-get update -y && sudo apt-get install -y apt-utils && sudo apt-get inst
 sudo apt-get install -y \
   build-essential make autoconf automake libtool bison flex autotools-dev \
   libssl-dev libldap2-dev libbz2-dev zlib1g-dev liblz4-dev libzstd-dev libcap-dev libsodium-dev libunwind-dev libwrap0-dev libkrb5-dev libpq-dev libsqlite3-dev libexpat1-dev \
-  liblua5.3-dev libxapian-dev libstemmer-dev libsasl2-dev libicu-dev krb5-multidev libdb-dev libcurl4-gnutls-dev libexpat-dev libexttextcat-dev default-libmysqlclient-dev \
-  libpcre3-dev libcdb-dev liblzma-dev liblmdb-dev libunbound-dev libmagic-dev
+  liblua5.3-dev libxapian-dev libstemmer-dev libsasl2-dev krb5-multidev libdb-dev libcurl4-gnutls-dev libexpat-dev libexttextcat-dev default-libmysqlclient-dev \
+  libpcre3-dev libcdb-dev liblzma-dev liblmdb-dev libunbound-dev libmagic-dev libicu72 
+  #libicu-dev
 
 #Переменная окружения:
 CFLAGS="$CFLAGS -ffile-prefix-map=$PWD=." LDFLAGS="$LDFLAGS" CXXFLAGS="$CFLAGS -ffile-prefix-map=$PWD=. "
@@ -40,8 +41,8 @@ CONFIGURE_ARGS+=("--with-ldap=plugin")
 CONFIGURE_ARGS+=("--with-sql=plugin")
 CONFIGURE_ARGS+=("--with-lua=plugin")
 CONFIGURE_ARGS+=("--with-pgsql")
-CONFIGURE_ARGS+=("--with-mysql")
-CONFIGURE_ARGS+=("--with-sqlite")
+CONFIGURE_ARGS+=("--without-mysql")
+CONFIGURE_ARGS+=("--without-sqlite")
 CONFIGURE_ARGS+=("--with-gssapi=plugin")
 CONFIGURE_ARGS+=("--with-solr")
 CONFIGURE_ARGS+=("--with-flatcurve")
