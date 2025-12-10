@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+MDA_CONF_DIR=/opt/r7-mailserver/mdaserver/etc/dovecot
 
 if [ "$1" = "purge" ] ; then
     for conffile in $(ucfq --with-colons r7mdaserver | cut -d: -f1); do
@@ -31,7 +32,7 @@ if [ "$1" = "purge" ] ; then
     # Remove dovecot.pem and dovecot.key only if they are symlinks; otherwise
     # we might remove CA-issued certificates that are difficult and/or
     # expensive to replace.
-    for file in /etc/dovecot/ssl/*; do
+    for file in $MDA_CONF_DIR/ssl/*; do
         if [ -h "$file" ]; then
             rm -f "$file"
         else
