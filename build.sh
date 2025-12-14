@@ -2,7 +2,7 @@
 
 VERSION=$1
 BUILD_DIRECTORY=/opt/r7-mailserver/mdaserver
-PACK_DIRECTORY=$2/Pack/src/opt/r7-mailserver/
+PACK_DIRECTORY=$2/Pack/src/opt/r7-mailserver
 
 
 #Пакеты компилятора и зависимости
@@ -69,7 +69,7 @@ sudo ./configure "${CONFIGURE_ARGS[@]}"
 ## Сборка
 sudo make install-strip
 
-sudo cp -r $BUILD_DIRECTORY $PACK_DIRECTORY
+sudo cp -r $BUILD_DIRECTORY $PACK_DIRECTORY/
 
 
 # Добавление необходимых пользователей
