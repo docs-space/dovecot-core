@@ -48,6 +48,10 @@ Template: r7mdaserver/mda-doveadm-key
 Type: password
 Description: X-Dovecot-API key for Doveadm HTTP-API:
 
+Template: r7mdaserver/mda-nodename
+Type: string
+Description: X-Dovecot-API key for Doveadm HTTP-API:
+
 Template: r7mdaserver/upgrade
 Type: boolean
 Default: false
