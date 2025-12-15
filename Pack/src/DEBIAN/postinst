@@ -10,24 +10,33 @@ read_params_debconf()
 {
 	echo "Reading parameters..."
     db_get r7mdaserver/mda-doveadm-key || true
+	printf "Debug: $RET\n"
     MDA_API_KEY="${RET:-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)}"
 
     db_get r7mdaserver/mda-ssl-cert || true
+	printf "Debug: $RET\n"
     MDA_CERT_FILENAME="$(realpath -m "$RET" 2>/dev/null)"
     db_get r7mdaserver/mda-ssl-key || true
+	printf "Debug: $RET\n"
     MDA_KEY_FILENAME="$(realpath -m "$RET" 2>/dev/null)"
     db_get r7mdaserver/mda-dh-key || true
+	printf "Debug: $RET\n"
     MDA_DH_FILENAME="$(realpath -m "$RET" 2>/dev/null)"
 
     db_get r7mdaserver/db-host || true
+	printf "Debug: $RET\n"
     MDA_DB_HOST="${RET:-localhost}"
     db_get r7mdaserver/db-port || true
+	printf "Debug: $RET\n"
     MDA_DB_PORT="${RET:-5432}"
 	db_get r7mdaserver/db-name || true
+	printf "Debug: $RET\n"
     MDA_DB_NAME="${RET:-r7mailserver}"
     db_get r7mdaserver/db-user || true
+	printf "Debug: $RET\n"
     MDA_DB_USER="${RET:-r7mailuser}"
     db_get r7mdaserver/db-pwd || true
+	printf "Debug: $RET\n"
     MDA_DB_PWD="${RET:-saSA123$}"
 #    db_get r7mailserver/upgrade
 #    UPGRADE="$RET"
