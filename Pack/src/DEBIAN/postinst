@@ -9,6 +9,10 @@ MDA_CONF_ENV=$MDA_CONF_DIR/conf.d/00-environment.conf
 read_params_debconf()
 {
 	echo "Reading parameters..."
+	db_get r7mdaserver/mda-nodename || true
+	printf "Debug: $RET\n"
+    MDA_API_KEY="${RET:-$(cat /proc/sys/kernel/random/uuid)}"
+
     db_get r7mdaserver/mda-doveadm-key || true
 	printf "Debug: $RET\n"
     MDA_API_KEY="${RET:-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)}"
@@ -62,13 +66,13 @@ conf_cert()
 		echo "Keys and certificate is found."
         cp "$MDA_CERT_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")"
         cp "$MDA_KEY_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")"
-		MDA_KEY_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")
-        MDA_CERT_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")
+		MDA_CERT_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")
+        MDA_KEY_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")
     else
         echo "Keys or certificate is not found."
 		echo "Generate self-signed certificate..."
-        MDA_KEY_FILENAME=$MDA_CONF_DIR/ssl/temp-cert.pem
-        MDA_CERT_FILENAME=$MDA_CONF_DIR/ssl/temp-key.pem
+        MDA_CERT_FILENAME=$MDA_CONF_DIR/ssl/temp-cert.pem
+        MDA_KEY_FILENAME=$MDA_CONF_DIR/ssl/temp-key.pem
 		echo "Generate RSA key"
         openssl genrsa -out "$MDA_KEY_FILENAME" 2048
 		echo "Generate PEM certificate"
@@ -79,6 +83,7 @@ conf_cert()
 	if [ -f "$MDA_DH_FILENAME" ]; then
 		echo "Diffie–Hellman keyfile is found."
 		cp "$MDA_DH_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")"
+		MDA_DH_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")
 	else
 		echo "Diffie–Hellman keyfile is not found."
 		echo "Generate Diffie–Hellman key"
