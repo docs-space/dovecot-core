@@ -10,3 +10,26 @@ if [ -z "${DPKG_ROOT:-}" ] && [ "$1" = remove ] && [ -d /run/systemd/system ] ; 
 	deb-systemd-invoke stop 'dovecot.service' >/dev/null || true
 fi
 # End automatically added section
+
+#Remove links
+if [ -h /bin/doveadm ]; then
+    rm -f /bin/doveadm
+fi
+if [ -h /bin/doveconf ]; then
+    rm -f /bin/doveconf
+fi
+if [ -h /bin/dovecot-sysreport ]; then
+    rm -f /bin/dovecot-sysreport
+fi
+if [ -h /bin/sievec ]; then
+    rm -f /bin/sievec
+fi
+if [ -h /bin/sieve-dump ]; then
+    rm -f /bin/sieve-dump
+fi
+if [ -h /bin/sieve-filter ]; then
+    rm -f /bin/sieve-filter
+fi
+if [ -h /bin/sieve-test ]; then
+    rm -f /bin/sieve-test
+fi

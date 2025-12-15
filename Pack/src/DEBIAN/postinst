@@ -152,7 +152,7 @@ if [ "$1" = "configure" ]; then
         --disabled-password --quiet vmail || true
 	
 	#Linking
-	ln /opt/r7-mailserver/mdaserver/bin/* /bin
+	ln -sf /opt/r7-mailserver/mdaserver/bin/* /bin
 
 	echo "Checking existing Dovecot configuration files"
 	for CONFFILE in $MDA_CONF_DIR/conf.d/*.conf $MDA_CONF_DIR/*.conf
