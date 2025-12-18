@@ -156,6 +156,10 @@ if [ "$1" = "configure" ]; then
 	adduser --system --group --home /nonexistent --no-create-home --gecos "Dovecot mail user" \
         --disabled-password --quiet vmail || true
 	
+	mkdir -p /mailstorage
+	chmod 760 /mailstorage
+	chown vmail:dovecot /mailstorage
+
 	#Linking
 	ln -sf /opt/r7-mailserver/mdaserver/bin/* /bin
 
