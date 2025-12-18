@@ -28,6 +28,59 @@ AC_DEFUN([AC_CC_D_FORTIFY_SOURCE],[
     ])
 ])
 
+AC_DEFUN([DC_FCF_PROTECTION], [
+  AC_ARG_WITH([fcf-protection],
+    [AS_HELP_STRING([--with-fcf-protection=<choice>], [Set Control-flow protection level (default: none)])],
+    [fcf_protection=$withval],
+    [fcf_protection=none])
+  AS_IF([test "x$fcf_protection" != "xnone"], [
+    case "$host" in
+      *)
+        gl_COMPILER_OPTION_IF([-fcf-protection=$fcf_protection],
+          [AM_CFLAGS="$AM_CFLAGS -fcf-protection=$fcf_protection"],
+          [AC_MSG_ERROR([-fcf-protection=$fcf_protection not supported by compiler])],
+          [AC_LANG_PROGRAM()])
+      ;;
+    esac
+  ])
+])
+
+AC_DEFUN([DC_HARDEN_SLS], [
+  AC_ARG_WITH([harden-sls],
+    [AS_HELP_STRING([--with-harden-sls=<choice>], [Straight-Line Speculation (SLS) mitigations (default: none)])],
+    [harden_sls=$withval],
+    [harden_sls=none])
+  AS_IF([test "x$harden_sls" != "xnone"], [
+    case "$host" in
+      *)
+        gl_COMPILER_OPTION_IF([-mharden-sls=$harden_sls],
+          [AM_CFLAGS="$AM_CFLAGS -mharden-sls=$harden_sls"],
+          [AC_MSG_ERROR([-mharden-sls=$harden_sls not supported by compiler])],
+          [AC_LANG_PROGRAM()])
+      ;;
+    esac
+  ])
+])
+
+AC_DEFUN([DC_LTO], [
+  AC_ARG_ENABLE([lto],
+    [AS_HELP_STRING([--enable-lto], [Enable Link Time Optimization (LTO)])],
+    [enable_lto=yes],
+    [enable_lto=no])
+  AS_IF([test "x$enable_lto" = xyes], [
+    case "$host" in
+      *)
+        gl_COMPILER_OPTION_IF([-flto=auto -ffat-lto-objects], [
+          AM_CFLAGS="$AM_CFLAGS -flto=auto -ffat-lto-objects"
+          AM_LDFLAGS="-flto"
+        ],
+        [AC_MSG_ERROR([LTO support requested but not present])],
+        [AC_LANG_PROGRAM()])
+      ;;
+    esac
+  ])
+])
+
 dnl * gcc specific options
 AC_DEFUN([DC_DOVECOT_CFLAGS],[
   m4_version_prereq(2.70, [AC_PROG_CC], [AC_PROG_CC_C99])
@@ -309,6 +362,9 @@ AC_DEFUN([DC_DOVECOT_HARDENING],[
 	AC_CC_D_FORTIFY_SOURCE
 	AC_CC_RETPOLINE
 	AC_LD_RELRO
+        DC_LTO
+        DC_HARDEN_SLS
+        DC_FCF_PROTECTION
 	DOVECOT_WANT_UBSAN
 ])
 
@@ -345,7 +401,7 @@ AC_DEFUN([DC_DOVECOT_FUZZER],[
 ])
 
 AC_DEFUN([DC_DOVECOT],[
-	AC_ARG_WITH(dovecot,
+        AC_ARG_WITH(dovecot,
 	  [  --with-dovecot=DIR      Dovecot base directory],
 			[ dovecotdir="$withval" ], [
 			  dc_prefix=$prefix

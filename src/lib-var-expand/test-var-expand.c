@@ -104,6 +104,7 @@ static void test_var_expand_builtin_filters(void) {
 			.out = "expecting CCBRACE or PIPE or NAME",
 			.ret = -1
 		},
+		{ .in = "%{\\", .out = "Premature program end", .ret = -1 },
 		{ .in = "hello%{}world", .out = "helloworld", .ret = 0 },
 		/* basic lookup */
 		{ .in = "%{first}", .out = "hello", .ret = 0 },
@@ -648,6 +649,7 @@ static void test_var_expand_escape(void)
 		{ .in = "no variables", .out = "no variables", .ret = 0 },
 		{ .in = "%{literal('hello')}", .out = "'hello'", .ret = 0 },
 		{ .in = "hello\\tworld", .out = "hello\\tworld", .ret = 0 },
+		{ .in = "%%%%%%%%%%%%%%%%%%", .out = "%%%%%%%%%%%%%%%%%%", .ret = 0 },
 		{ .in = "%{literal('hello\r\n\tworld')}", .out = "'hello\r\n\tworld'", .ret = 0 },
 		/* Hello */
 		{ .in = "\\110\\145\\154\\154\\157", .out = "\\110\\145\\154\\154\\157", .ret = 0},
@@ -670,6 +672,17 @@ static void test_var_expand_escape(void)
 		{ .in = "%{literal(\"\\\"\\\\hello\\\\world\\\"\")}", .out = "'\"\\hello\\world\"'", .ret = 0 },
 		/* Unsupported escape sequence */
 		{ .in = "%{literal('\\z')}", .out = "Invalid character escape", .ret = -1 },
+#define STR10(x) x x x x x x x x x x
+#define STR100(x) STR10(x) STR10(x) STR10(x) STR10(x) STR10(x) STR10(x) STR10(x) STR10(x) STR10(x) STR10(x)
+		/* Too long content */
+		{
+			.in = STR100("0123456789012345678901234567890123456789"
+				     "0123456789012345678901234567890123456789"
+				     "01234567890123456789"),
+			.out = "Program size exceeds maximum of 8192 bytes",
+			.ret = -1,
+		},
+
 	};
 
 	const struct var_expand_params params = {
