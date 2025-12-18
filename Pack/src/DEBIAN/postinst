@@ -11,7 +11,7 @@ read_params_debconf()
 	echo "Reading parameters..."
 	db_get r7mdaserver/mda-nodename || true
 	printf "Debug: $RET\n"
-    MDA_API_KEY="${RET:-$(cat /proc/sys/kernel/random/uuid)}"
+    MDA_INSTANCE="${RET:-$(cat /proc/sys/kernel/random/uuid)}"
 
     db_get r7mdaserver/mda-doveadm-key || true
 	printf "Debug: $RET\n"
