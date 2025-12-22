@@ -25,21 +25,21 @@ Description: Database password:
 
 Template: r7mdaserver/mda-ssl-cert
 Type: string
-Default: /full-path-to/certificate.pem
+Default: ./sslcert/certificate.pem
 Description: Enter full path:
  Specify the full path to the Wildcard certificate
  If certificate file is not found, a self-signed certificate will be generated.
 
 Template: r7mdaserver/mda-ssl-key
 Type: string
-Default: /full-path-to/key.pem
+Default: ./sslcert/key.pem
 Description: Enter full path:
  Specify the full path to keyfile of Wildcard certificate
  If keyfile is not found, a self-signed certificate will be generated.
 
 Template: r7mdaserver/mda-dh-key
 Type: string
-Default: /full-path-to/dhparam.pem
+Default: ./sslcert/dhparam.pem
 Description: Enter full path:
  Specify the full path to Diffie–Hellman keyfile:
  If Diffie-Hellman keyfile is not found, a new one will be generated.
