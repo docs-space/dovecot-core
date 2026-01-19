@@ -14,7 +14,8 @@
 #include "pcre2.h"
 
 #define DREGEX_MAX_DEPTH 100
-#define DREGEX_MAX_MATCHES 100
+#define DREGEX_MAX_MATCHES 10000000
+#define DREGEX_MAX_CAPTURE_GROUPS 100
 #define DREGEX_MAX_CPU_SECONDS 1
 
 struct dregex_code {
@@ -85,7 +86,7 @@ static void dregex_code_init(struct dregex_code *code)
 #endif
 
 	/* Set some limits */
-	pcre2_set_match_limit(code->mctx, code->max_capture_groups);
+	pcre2_set_match_limit(code->mctx, DREGEX_MAX_MATCHES);
 	pcre2_set_depth_limit(code->mctx, code->max_depth);
 }
 
@@ -104,7 +105,7 @@ struct dregex_code *dregex_code_create_params(const struct dregex_params *params
 static const struct dregex_params default_params = {
 	.max_depth = DREGEX_MAX_DEPTH,
 	.max_cpu_seconds = DREGEX_MAX_CPU_SECONDS,
-	.max_capture_groups = DREGEX_MAX_MATCHES,
+	.max_capture_groups = DREGEX_MAX_CAPTURE_GROUPS,
 };
 
 struct dregex_code *dregex_code_create(void)
@@ -335,7 +336,7 @@ int dregex_code_match_groups(struct dregex_code *code, const char *subject,
 
 	T_BEGIN {
 		pcre2_match_data *mdata =
-			pcre2_match_data_create_from_pattern(code->pat, code->gctx);
+			pcre2_match_data_create(code->max_capture_groups, code->gctx);
 		ret = dregex_code_match_int(code, subject, mdata, error_r);
 		if (ret > 1) {
 			bool skip_empty = HAS_ALL_BITS(code->flags, DREGEX_NO_EMPTY_SUB);
