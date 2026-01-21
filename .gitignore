@@ -26,7 +26,6 @@ build.log
 /config.log
 /config.status
 /build-aux/config.sub
-/build-aux/config.rpath
 /build-aux/compile
 /build-aux/depcomp
 /dummy-config.h
