@@ -116,7 +116,7 @@ bool doveadm_cmd_param_str(const struct doveadm_cmd_context *cctx,
 	const struct doveadm_cmd_param *param;
 	if ((param = doveadm_cmd_param_get(cctx, name)) == NULL)
 		return FALSE;
-	i_info("Param Type equal %s of doveadm_cmd_param_str func. Trace: %s [%s]", (const char *)param->type, (const char *)param->name, (const char *)param->key);
+	i_info("Param Type equal %s of doveadm_cmd_param_str func.", (const char *)param->type);
 	i_assert(param->type == CMD_PARAM_STR);
 	*value_r = param->value.v_string;
 	return TRUE;
@@ -141,7 +141,7 @@ bool doveadm_cmd_param_array_get(const struct doveadm_cmd_context *cctx,
 	const struct doveadm_cmd_param *param;
 	if ((param = doveadm_cmd_param_get(cctx, name)) == NULL)
 		return FALSE;
-	i_info("Param Type equal %s of doveadm_cmd_param_array_get func. Trace: %s [%s]", (const char *)param->type, (const char *)param->name, (const char *)param->key);
+	i_info("Param Type equal %s of doveadm_cmd_param_array_get func.", (const char *)param->type);
 	i_assert(param->type == CMD_PARAM_ARRAY);
 	*value_r = param->value.v_array;
 	return TRUE;
