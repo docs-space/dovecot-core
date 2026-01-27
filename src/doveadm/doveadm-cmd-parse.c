@@ -116,7 +116,13 @@ bool doveadm_cmd_param_str(const struct doveadm_cmd_context *cctx,
 	const struct doveadm_cmd_param *param;
 	if ((param = doveadm_cmd_param_get(cctx, name)) == NULL)
 		return FALSE;
-	i_info("Param Type equal %s of doveadm_cmd_param_str func.", param->type);
+	/*i_info("Param Type equal %s of doveadm_cmd_param_str func.", param->type);*/
+	i_info("Parameter doveadm_cmd_param_get: short_opt='%c', name='%s', key='%s', type=%d, value_set=%s",
+       param->short_opt ? param->short_opt : ' ',
+       param->name ? param->name : "(null)",
+       param->key ? param->key : "(null)",
+       param->type,
+       param->value_set ? "true" : "false");
 	i_assert(param->type == CMD_PARAM_STR);
 	*value_r = param->value.v_string;
 	return TRUE;
