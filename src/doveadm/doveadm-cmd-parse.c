@@ -59,6 +59,7 @@ static const struct doveadm_cmd_param *
 doveadm_cmd_param_get(const struct doveadm_cmd_context *cctx,
 		      const char *name)
 {
+	i_debug("func doveadm_cmd_param_get() begin");
 	i_assert(cctx != NULL);
 	i_assert(cctx->argv != NULL);
 	for(int i = 0; i < cctx->argc; i++) {
@@ -113,11 +114,11 @@ bool doveadm_cmd_param_int64(const struct doveadm_cmd_context *cctx,
 bool doveadm_cmd_param_str(const struct doveadm_cmd_context *cctx,
 			   const char *name, const char **value_r)
 {
+	i_debug("func doveadm_cmd_param_str() begin");
 	const struct doveadm_cmd_param *param;
 	if ((param = doveadm_cmd_param_get(cctx, name)) == NULL)
 		return FALSE;
-	/*i_info("Param Type equal %s of doveadm_cmd_param_str func.", param->type);*/
-	i_info("Parameter doveadm_cmd_param_get: short_opt='%c', name='%s', key='%s', type=%d, value_set=%s",
+	i_debug("func doveadm_cmd_param_get() return param: short_opt='%c', name='%s', key='%s', type=%d, value_set=%s",
        param->short_opt ? param->short_opt : ' ',
        param->name ? param->name : "(null)",
        param->key ? param->key : "(null)",
@@ -144,6 +145,7 @@ bool doveadm_cmd_param_array_get(const struct doveadm_cmd_context *cctx,
 				 const char *name,
 				 ARRAY_TYPE(const_string) *value_r)
 {
+	i_debug("func doveadm_cmd_param_array_get() begin");
 	const struct doveadm_cmd_param *param;
 	if ((param = doveadm_cmd_param_get(cctx, name)) == NULL)
 		return FALSE;
@@ -158,6 +160,7 @@ bool doveadm_cmd_param_array_append(const struct doveadm_cmd_context *cctx,
 				    const char *name,
 				    ARRAY_TYPE(const_string) *dest)
 {
+	i_debug("func doveadm_cmd_param_array_append() begin");
 	ARRAY_TYPE(const_string) array;
 	bool found = doveadm_cmd_param_array_get(cctx, name, &array);
 	if (found) array_append_array(dest, &array);
@@ -167,6 +170,7 @@ bool doveadm_cmd_param_array_append(const struct doveadm_cmd_context *cctx,
 bool doveadm_cmd_param_array(const struct doveadm_cmd_context *cctx,
 			     const char *name, const char *const **value_r)
 {
+	i_debug("func doveadm_cmd_param_array() begin");
 	ARRAY_TYPE(const_string) array;
 	bool found = doveadm_cmd_param_array_get(cctx, name, &array);
 	if (found) {
@@ -183,6 +187,7 @@ bool doveadm_cmd_param_array(const struct doveadm_cmd_context *cctx,
 bool doveadm_cmd_param_istream(const struct doveadm_cmd_context *cctx,
 			       const char *name, struct istream **value_r)
 {
+	i_debug("func doveadm_cmd_param_istream() begin");
 	const struct doveadm_cmd_param *param;
 	if ((param = doveadm_cmd_param_get(cctx, name)) == NULL)
 		return FALSE;
@@ -194,6 +199,7 @@ bool doveadm_cmd_param_istream(const struct doveadm_cmd_context *cctx,
 
 void doveadm_cmd_params_clean(ARRAY_TYPE(doveadm_cmd_param_arr_t) *pargv)
 {
+	i_debug("func doveadm_cmd_params_clean() begin");
 	struct doveadm_cmd_param *param;
 
 	array_foreach_modifiable(pargv, param) {
@@ -207,6 +213,7 @@ void doveadm_cmd_params_clean(ARRAY_TYPE(doveadm_cmd_param_arr_t) *pargv)
 void doveadm_cmd_params_null_terminate_arrays(
 	ARRAY_TYPE(doveadm_cmd_param_arr_t) *pargv)
 {
+	i_debug("func doveadm_cmd_params_null_terminate_arrays() begin");
 	struct doveadm_cmd_param *param;
 
 	array_foreach_modifiable(pargv, param) {
@@ -246,6 +253,7 @@ doveadm_fill_param(struct doveadm_cmd_param *param,
 		   const char *value, pool_t pool,
 		   const char **error_r)
 {
+	i_debug("func doveadm_fill_param() begin");
 	param->value_set = TRUE;
 	switch (param->type) {
 	case CMD_PARAM_BOOL:
@@ -467,6 +475,7 @@ int doveadm_cmdline_run(int argc, const char *const argv[],
 static const char*
 doveadm_cmd_param_tostring(const struct doveadm_cmd_param *argv)
 {
+	i_debug("func doveadm_cmd_param_tostring() begin");
 	if (!argv->value_set)
 		return "";
 	switch(argv->type) {
