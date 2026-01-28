@@ -516,13 +516,13 @@ void doveadm_cmd_params_dump(const struct doveadm_cmd_context *cctx)
 
 void doveadm_cmd_params_dump_log(const struct doveadm_cmd_context *cctx)
 {
-	i_debug(cctx->event, "%s()", __func__);
+	i_debug("Trace context of func %s()", __func__);
 	i_assert(cctx != NULL);
 	i_assert(cctx->argv != NULL);
 	const struct doveadm_cmd_param *argv = cctx->argv;
 	for (int index = 0; index < cctx->argc; index++, argv++) T_BEGIN {
 		const char *value = doveadm_cmd_param_tostring(argv);
-		i_debug(cctx->event, "    %c%c%c%c %02x/%02x -%c %s: %s",
+		i_debug("    %c%c%c%c %02x/%02x -%c %s: %s",
 			*value != '\0' ? 'S': '-',
 			argv->type == CMD_PARAM_ARRAY ? 'A': '-',
 			(argv->flags & CMD_PARAM_FLAG_POSITIONAL) != 0 ? 'P': '-',
