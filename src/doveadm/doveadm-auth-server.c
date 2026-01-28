@@ -180,8 +180,6 @@ static void cmd_auth_cache_flush(struct doveadm_cmd_context *cctx)
 	const char *master_socket_path, *const *user_masks = NULL;
 	struct auth_master_connection *conn;
 	unsigned int count;
-	i_debug("func cmd_auth_cache_flush() begin");
-	doveadm_cmd_params_dump(cctx);
 
 	if (!doveadm_cmd_param_str(cctx, "socket-path", &master_socket_path)) {
 		master_socket_path = t_strconcat(doveadm_settings->base_dir,

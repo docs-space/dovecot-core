@@ -216,6 +216,9 @@ doveadm_http_server_command_execute(struct client_request_http *req)
 	event_set_append_log_prefix(cctx->event, t_strdup_printf(
 		"cmd %s: ", cctx->cmd->name));
 
+	//Gromy: Tracing data to log
+	doveadm_cmd_params_dump_log(cctx);
+
 	if (doveadm_cmd_param_str(cctx, "user", &user))
 		e_info(cctx->event, "Executing command as '%s'", user);
 	else

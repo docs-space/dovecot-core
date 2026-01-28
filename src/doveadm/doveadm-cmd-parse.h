@@ -227,5 +227,6 @@ void doveadm_cmd_params_null_terminate_arrays(
 /* debug functions */
 void doveadm_cmd_args_dump(const char *const *items);
 void doveadm_cmd_params_dump(const struct doveadm_cmd_context *cctx);
+void doveadm_cmd_params_dump_log(const struct doveadm_cmd_context *cctx);
 
 #endif
