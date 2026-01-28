@@ -522,7 +522,7 @@ void doveadm_cmd_params_dump_log(const struct doveadm_cmd_context *cctx)
 	const struct doveadm_cmd_param *argv = cctx->argv;
 	for (int index = 0; index < cctx->argc; index++, argv++) T_BEGIN {
 		const char *value = doveadm_cmd_param_tostring(argv);
-		i_debug("    %c%c%c%c %02x/%02x -%c %s: %s",
+		i_debug("    %c %c %c %c Type:%02x/Flags:%02x -%c %s: %s",
 			*value != '\0' ? 'S': '-',
 			argv->type == CMD_PARAM_ARRAY ? 'A': '-',
 			(argv->flags & CMD_PARAM_FLAG_POSITIONAL) != 0 ? 'P': '-',
