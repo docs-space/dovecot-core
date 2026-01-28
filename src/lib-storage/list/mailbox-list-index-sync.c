@@ -22,7 +22,7 @@ node_lookup_guid(struct mailbox_list_index_sync_context *ctx,
 	mailbox_list_index_node_get_path(node, ns_sep, str);
 
 	vname = mailbox_list_get_vname(ctx->list, str_c(str));
-	box = mailbox_alloc(ctx->list, vname, 0);
+	box = mailbox_alloc(ctx->list, vname, MAILBOX_FLAG_RAW_NAME);
 	if (mailbox_get_metadata(box, MAILBOX_METADATA_GUID, &metadata) == 0)
 		memcpy(guid_r, metadata.guid, GUID_128_SIZE);
 	mailbox_free(&box);
@@ -299,6 +299,8 @@ mailbox_list_index_sync_list(struct mailbox_list_index_sync_context *sync_ctx)
 	enum mailbox_list_iter_flags iter_flags;
 	const char *patterns[2];
 	struct mailbox_list_index_node *node;
+	pool_t info_pool;
+	int ret;
 	uint32_t seq;
 	bool created;
 
@@ -317,6 +319,8 @@ mailbox_list_index_sync_list(struct mailbox_list_index_sync_context *sync_ctx)
 	iter = sync_ctx->ilist->module_ctx.super.
 		iter_init(sync_ctx->list, patterns,
 			  iter_flags);
+	info_pool = pool_alloconly_create("mailbox list iter info", 128);
+	iter->info_pool = info_pool;
 
 	sync_ctx->syncing_list = TRUE;
 	while ((info = sync_ctx->ilist->module_ctx.super.iter_next(iter)) != NULL) T_BEGIN {
@@ -345,7 +349,9 @@ mailbox_list_index_sync_list(struct mailbox_list_index_sync_context *sync_ctx)
 	} T_END;
 	sync_ctx->syncing_list = FALSE;
 
-	if (sync_ctx->ilist->module_ctx.super.iter_deinit(iter) < 0)
+	ret = sync_ctx->ilist->module_ctx.super.iter_deinit(iter);
+	pool_unref(&info_pool);
+	if (ret < 0)
 		return -1;
 
 	/* successfully listed everything, expunge any unseen mailboxes */

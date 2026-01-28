@@ -289,7 +289,7 @@ imapc_mail_send_fetch(struct mail *_mail, enum mail_fetch_field fields,
 		for (i = 0; mail->fetching_headers[i] != NULL; i++) {
 			if (i > 0)
 				str_append_c(str, ' ');
-			imap_append_astring(str, mail->fetching_headers[i]);
+			imap_append_astring(str, mail->fetching_headers[i], 0);
 		}
 		str_append(str, ")] ");
 		mail->header_list_fetched = FALSE;
@@ -809,7 +809,8 @@ imapc_args_to_bodystructure(struct imapc_mail *mail,
 		ret = NULL;
 	} else {
 		string_t *str = t_str_new(128);
-		if (imap_bodystructure_write(parts, str, extended, &error) < 0) {
+		if (imap_bodystructure_write(parts, str, extended, 0,
+					     &error) < 0) {
 			/* All the input to imap_bodystructure_write() came
 			   from imap_bodystructure_parse_args(). We should never
 			   get here. Instead, if something is wrong the

@@ -4,17 +4,14 @@
 #include "array.h"
 #include "ioloop.h"
 #include "net.h"
-#include "fdpass.h"
 #include "istream.h"
 #include "istream-unix.h"
 #include "ostream.h"
 #include "str.h"
 #include "str-sanitize.h"
 #include "strescape.h"
-#include "llist.h"
 #include "hostpid.h"
 #include "process-title.h"
-#include "randgen.h"
 #include "restrict-access.h"
 #include "settings.h"
 #include "connection.h"
@@ -23,8 +20,6 @@
 #include "master-interface.h"
 #include "mail-storage.h"
 #include "mail-storage-service.h"
-#include "mail-namespace.h"
-#include "imap-url.h"
 #include "imap-msgpart-url.h"
 #include "imap-urlauth.h"
 #include "imap-urlauth-fetch.h"
@@ -336,7 +331,9 @@ client_fetch_urlpart(struct client *client, const char *url,
 	if ((url_flags & IMAP_URLAUTH_FETCH_FLAG_BINARY) != 0)
 		imap_msgpart_url_set_decode_to_binary(client->url);
 	if ((url_flags & IMAP_URLAUTH_FETCH_FLAG_BODYPARTSTRUCTURE) != 0) {
-		ret = imap_msgpart_url_get_bodypartstructure(client->url,
+		/* FIXME: Implement UTF-8 support for quoted strings in
+		          generated BODYSTRUCTURE element. */
+		ret = imap_msgpart_url_get_bodypartstructure(client->url, 0,
 							     bpstruct_r, &error);
 		if (ret <= 0) {
 			*errormsg_r = t_strdup_printf(

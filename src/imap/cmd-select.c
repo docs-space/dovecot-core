@@ -247,7 +247,8 @@ static int select_qresync(struct imap_select_context *ctx)
 	}
 
 	fetch_ctx = imap_fetch_alloc(ctx->cmd->client, ctx->cmd->pool,
-		t_strdup_printf("%s %s", ctx->cmd->name, ctx->cmd->args));
+		t_strdup_printf("%s %s", ctx->cmd->name, ctx->cmd->args),
+		ctx->cmd->utf8);
 
 	imap_fetch_init_nofail_handler(fetch_ctx, imap_fetch_uid_init);
 	imap_fetch_init_nofail_handler(fetch_ctx, imap_fetch_flags_init);
@@ -388,7 +389,7 @@ bool cmd_select_full(struct client_command_context *cmd, bool readonly)
 
 	ctx = p_new(cmd->pool, struct imap_select_context, 1);
 	ctx->cmd = cmd;
-	ctx->ns = client_find_namespace_full(cmd->client, &mailbox, &client_error);
+	ctx->ns = client_find_namespace_full(cmd, &mailbox, &client_error);
 	if (ctx->ns == NULL) {
 		/* send * OK [CLOSED] before the tagged reply */
 		close_selected_mailbox(client);

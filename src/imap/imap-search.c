@@ -49,8 +49,8 @@ search_parse_fetch_att(struct imap_search_context *ctx,
 
 	ctx->fetch_pool = pool_alloconly_create("search update fetch", 512);
 	if (imap_fetch_att_list_parse(ctx->cmd->client, ctx->fetch_pool,
-				      update_args, &ctx->fetch_ctx,
-				      &client_error) < 0) {
+				      update_args, ctx->cmd->utf8,
+				      &ctx->fetch_ctx, &client_error) < 0) {
 		client_send_command_error(ctx->cmd, t_strconcat(
 			"SEARCH UPDATE fetch-att: ", client_error, NULL));
 		pool_unref(&ctx->fetch_pool);
@@ -178,7 +178,7 @@ static void imap_search_result_save(struct imap_search_context *ctx)
 		/* too many updates */
 		string_t *str = t_str_new(256);
 		str_append(str, "* NO [NOUPDATE ");
-		imap_append_quoted(str, ctx->cmd->tag);
+		imap_append_quoted(str, ctx->cmd->tag, 0);
 		str_append_c(str, ']');
 		client_send_line(client, str_c(str));
 		ctx->return_options &= ENUM_NEGATE(SEARCH_RETURN_UPDATE);
@@ -285,7 +285,7 @@ static void imap_search_send_result(struct imap_search_context *ctx)
 
 	str = str_new(default_pool, 1024);
 	str_append(str, "* ESEARCH (TAG ");
-	imap_append_string(str, ctx->cmd->tag);
+	imap_append_string(str, ctx->cmd->tag, 0);
 	str_append_c(str, ')');
 
 	if (ctx->cmd->uid)

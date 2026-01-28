@@ -380,8 +380,6 @@ static void test_var_expand_if(void)
 		{ .in = "%{one | if('eq', one, one, two)}", .out = "1", .ret = 0 },
 		{ .in = "%{one | if('gt', two, one, two)}", .out = "2", .ret = 0 },
 		{ .in = "%{evil1 | if('eq', ';\\', \\':', evil2, 'no')}", .out = ";test;", .ret = 0 },
-		/* FIXME: add inner if support? */
-/*		{ "%{if;%{if;%{one};eq;1;1;0};eq;%{if;%{two};eq;2;2;3};yes;no}", "no", 1 }, */
 		/* Errors */
 		{ .in = "%{if('gt', two, one, two)}", .out = "if: Missing parameters", .ret = -1 },
 		{ .in = "%{if(1, '', 1, 'yes', 'no')}", .out = "if: Unsupported comparator ''", .ret = -1 },
@@ -393,6 +391,108 @@ static void test_var_expand_if(void)
 		{ .in = "%{if(1, '==', 1, 'yes', 'no', 'maybe')}", .out = "if: Too many positional parameters", .ret = -1 },
 		{ .in = "%{if(fail=1)}", .out = "if: Unsupported key 'fail'", .ret = -1 },
 		{ .in = "%{alpha|if('==', two, one, two)}", .out = "if: Input is not a number", .ret = -1 },
+	};
+
+	const struct var_expand_params params = {
+		.table = table,
+	};
+
+	run_var_expand_tests(&params, tests, N_ELEMENTS(tests));
+
+	test_end();
+}
+
+/* This basically uses the same things if does, so we can do slightly relaxed
+   testing */
+static void test_var_expand_switch(void)
+{
+	test_begin("var_expand(switch)");
+
+	const struct var_expand_table table[] = {
+		{ .key = "alpha", .value = "alpha" },
+		{ .key = "beta", .value = "beta" },
+		{ .key = "one", .value = "1" },
+		{ .key = "two", .value = "2" },
+		{ .key = "evil1", .value = ";', ':" },
+		{ .key = "evil2", .value = ";test;" },
+		VAR_EXPAND_TABLE_END
+	};
+
+	const struct var_expand_test tests[] = {
+		{
+			.in = "%{switch(alpha, \"eq\", alpha, \"yes\", beta, \"no\", one, \"other\", two)}",
+			.out = "yes",
+			.ret = 0,
+		},
+		{
+			.in = "%{beta | switch(\"eq\", alpha, \"yes\", beta, \"no\", one, \"other\", two)}",
+			.out = "no",
+			.ret = 0,
+		},
+		{
+			.in = "%{one | switch(\"eq\", alpha, \"yes\", beta, \"no\", one, \"other\", two)}",
+			.out = "other",
+			.ret = 0,
+		},
+		{
+			.in = "%{evil2 | switch(\"eq\", alpha, \"yes\", beta, \"no\", one, \"other\", two)}",
+			.out = "2",
+			.ret = 0,
+		},
+		{
+			.in = "%{one | switch(\"==\", 1, 2, 2, 3, 3, 4, -1)}",
+			.out = "2",
+			.ret = 0,
+		},
+		/* No match, no default */
+		{
+			.in = "%{literal('0') | switch(\"==\", 1, 2, 2, 3, 3, 4)}",
+			.out = "switch: No default value provided",
+			.ret = -1,
+		},
+		/* No match, missing variable */
+		{
+			.in = "%{literal('0') | switch(\"==\", 1, 2, 2, 3, 3, 4, four)}",
+			.out = "switch: in condition #3: Unknown variable 'four'",
+			.ret = -1,
+		},
+		/* No match, no default, but fix with default filter */
+		{
+			.in = "%{literal('0') | switch(\"==\", 1, 2, 2, 3, 3, 4) | default}",
+			.out = "",
+			.ret = 0,
+		},
+		/* Errors */
+		{
+			.in = "%{one | switch(\"==\", 1)}",
+			.out = "switch: At least one condition-value pair is required",
+			.ret = -1,
+		},
+		{
+			.in = "%{switch}",
+			.out = "switch: Missing parameters",
+			.ret = -1,
+		},
+		{
+			.in = "%{switch(\"==\")}",
+			.out = "switch: Missing parameters",
+			.ret = -1,
+		},
+		{
+			.in = "%{switch(alpha, \"==\")}",
+			.out = "switch: At least one condition-value pair is required",
+			.ret = -1,
+		},
+		{
+			.in = "%{alpha | switch(\"==\")}",
+			.out = "switch: At least one condition-value pair is required",
+			.ret = -1,
+		},
+		{
+			.in = "%{switch(alpha, \"eq\", \"default\")}",
+			.out = "switch: At least one condition-value pair is required",
+			.ret = -1,
+		},
 	};
 
 	const struct var_expand_params params = {
@@ -1226,6 +1326,7 @@ int main(int argc, char *const argv[])
 		test_var_expand_builtin_filters,
 		test_var_expand_math,
 		test_var_expand_if,
+		test_var_expand_switch,
 		test_var_expand_providers,
 		test_var_expand_provider_arr,
 		test_var_expand_tables_arr,
