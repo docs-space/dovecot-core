@@ -62,6 +62,7 @@ doveadm_cmd_param_get(const struct doveadm_cmd_context *cctx,
 	i_debug("func doveadm_cmd_param_get() begin");
 	i_assert(cctx != NULL);
 	i_assert(cctx->argv != NULL);
+	doveadm_cmd_params_dump(cctx);
 	for(int i = 0; i < cctx->argc; i++) {
 		if (strcmp(cctx->argv[i].name, name) == 0 &&
 		    cctx->argv[i].value_set)
@@ -514,6 +515,7 @@ doveadm_cmd_param_tostring(const struct doveadm_cmd_param *argv)
 
 void doveadm_cmd_params_dump(const struct doveadm_cmd_context *cctx)
 {
+	i_debug("func doveadm_cmd_params_dump() begin");
 	e_debug(cctx->event, "%s()", __func__);
 	i_assert(cctx != NULL);
 	i_assert(cctx->argv != NULL);
