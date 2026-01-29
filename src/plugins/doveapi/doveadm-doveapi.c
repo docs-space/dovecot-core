@@ -97,6 +97,7 @@ struct doveadm_cmd_ver2 r7_test1 = { .name = "r7test1",
 
 static struct doveadm_cmd_ver2 *doveapi_commands[30] = { &r7_ping,
 	                                                 &r7_storages,
+	                                                 &r7_storage_stat,
 	                                                 NULL };
 
 void doveadm_doveapi_plugin_init(struct module *module ATTR_UNUSED)

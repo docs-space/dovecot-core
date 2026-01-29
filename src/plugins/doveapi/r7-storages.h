@@ -5,6 +5,9 @@
 #define DOVEADM_R7_STORAGES_H
 
 extern struct doveadm_cmd_ver2 r7_storages;
+extern struct doveadm_cmd_ver2 r7_storage_stat;
+
 void cmd_storages(struct doveadm_cmd_context *cctx);
+void cmd_storage_stat(struct doveadm_cmd_context *cctx);
 
 #endif
