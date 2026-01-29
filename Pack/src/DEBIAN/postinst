@@ -159,6 +159,7 @@ if [ "$1" = "configure" ]; then
 	mkdir -p /mailstorage /var/log/r7-office/mdaserver
 	chmod 760 /mailstorage
 	chown vmail:dovecot /mailstorage
+	chown dovecot:dovecot /var/log/r7-office/mdaserver
 
 	#Linking
 	ln -sf /opt/r7-mailserver/mdaserver/bin/* /bin
