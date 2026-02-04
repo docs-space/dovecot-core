@@ -57,6 +57,14 @@ read_params_debconf()
 
 }
 
+save_params_debconf()
+{
+    echo "Saving debconf parameters..."
+    db_set r7mdaserver/mda-ssl-cert "$MDA_CERT_FILENAME"
+    db_set r7mdaserver/mda-ssl-key "$MDA_KEY_FILENAME"
+    db_set r7mdaserver/mda-dh-key "$MDA_DH_FILENAME"
+}
+
 conf_cert()
 {
 #	MDA_CONF_SSL=$MDA_CONF_DIR/conf.d/10-ssl.conf
@@ -187,6 +195,7 @@ if [ "$1" = "configure" ]; then
 	conf_cert
 	conf_db
 	conf_api
+	save_params_debconf
 
   	if ! dpkg-statoverride --list $MDA_CONF_DIR/private >/dev/null; then
     	dpkg-statoverride --quiet --update --add root root 0700 $MDA_CONF_DIR/private
