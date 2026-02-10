@@ -72,8 +72,8 @@ conf_cert()
 	# Check Wildcard
 	if [ -f "$MDA_CERT_FILENAME" ] && [ -f "$MDA_KEY_FILENAME" ]; then
 		echo "Keys and certificate is found."
-        cp "$MDA_CERT_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")"
-        cp "$MDA_KEY_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")"
+        cp -rf "$MDA_CERT_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")"
+        cp -rf "$MDA_KEY_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")"
 		MDA_CERT_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_CERT_FILENAME")
         MDA_KEY_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_KEY_FILENAME")
     else
@@ -90,7 +90,7 @@ conf_cert()
 	#Check Diffie–Hellman key
 	if [ -f "$MDA_DH_FILENAME" ]; then
 		echo "Diffie–Hellman keyfile is found."
-		cp "$MDA_DH_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")"
+		cp -rf "$MDA_DH_FILENAME" "$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")"
 		MDA_DH_FILENAME=$MDA_CONF_DIR/ssl/$(basename "$MDA_DH_FILENAME")
 	else
 		echo "Diffie–Hellman keyfile is not found."
