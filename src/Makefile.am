@@ -3,9 +3,13 @@ LIB_LDAP=lib-ldap
 endif
 if HAVE_LUA
 LIB_LUA=lib-lua
+LIBSTORAGE_LUA=lib-storage-lua
 endif
 if BUILD_IMAP_HIBERNATE
 IMAP_HIBERNATE=imap-hibernate
+endif
+if HAVE_GSSAPI
+LIBDOVEOT_GSSAPI_DIR=lib-dovecot-gssapi
 endif
 
 LIBDOVECOT_SUBDIRS = \
@@ -35,7 +39,6 @@ LIBDOVECOT_SUBDIRS = \
 	lib-smtp \
 	lib-pop3 \
 	lib-imap \
-	lib-imap-storage \
 	lib-doveadm \
 	lib-var-expand-crypt
 
@@ -43,14 +46,18 @@ SUBDIRS = \
 	$(LIBDOVECOT_SUBDIRS) \
 	lib-dict-extra \
 	lib-dovecot \
+	$(LIBDOVEOT_GSSAPI_DIR) \
 	$(LIB_LDAP) \
 	$(LIB_LUA) \
 	lib-language \
 	lib-imap-client \
-	lib-imap-urlauth \
 	lib-compression \
 	lib-index \
 	lib-storage \
+	lib-imap-storage \
+	lib-dovecot-storage \
+	$(LIBSTORAGE_LUA) \
+	lib-imap-urlauth \
 	lib-sql \
 	lib-lda \
 	lib-dict-backend \

@@ -141,6 +141,7 @@ static int submission_client_create(struct client *client)
 
 	subm_client->conn = smtp_server_connection_create_from_streams(
 		smtp_server, client->input, client->output,
+		&client->real_local_ip, client->real_local_port,
 		&client->real_remote_ip, client->real_remote_port,
 		&smtp_set, &smtp_callbacks, subm_client);
 	return 0;
@@ -217,6 +218,10 @@ client_connection_cmd_xclient(void *context,
 		client->common.ip = data->source_ip;
 	if (data->source_port != 0)
 		client->common.remote_port = data->source_port;
+	if (data->dest_ip.family != 0)
+		client->common.local_ip = data->dest_ip;
+	if (data->dest_port != 0)
+		client->common.local_port = data->dest_port;
 	if (data->ttl_plus_1 > 0)
 		client->common.proxy_ttl = data->ttl_plus_1 - 1;
 	if (data->session != NULL) {
@@ -244,6 +249,14 @@ client_connection_cmd_xclient(void *context,
 						  "Invalid FORWARD parameter");
 			}
 		}
+	}
+
+	const char *error;
+	if (client_addresses_changed(&client->common, &error) < 0) {
+		client_notify_disconnect(&client->common,
+			CLIENT_DISCONNECT_INTERNAL_ERROR,
+			"Failed to reload configuration");
+		client_disconnect(&client->common, error);
 	}
 }
 

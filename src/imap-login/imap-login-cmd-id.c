@@ -6,6 +6,7 @@
 #include "connection.h"
 #include "imap-parser.h"
 #include "imap-quote.h"
+#include "imap-resp-code.h"
 #include "imap-login-settings.h"
 #include "imap-login-client.h"
 
@@ -28,9 +29,14 @@ struct imap_id_params {
 	bool multiplex;
 };
 
+enum imap_id_param_flag {
+	IMAP_ID_PARAM_FLAG_KEY_IS_PREFIX = BIT(0),
+	IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS = BIT(1),
+};
+
 struct imap_id_param_handler {
 	const char *key;
-	bool key_is_prefix;
+	enum imap_id_param_flag flags;
 
 	bool (*callback)(struct imap_id_params *params,
 			 const char *key, const char *value);
@@ -142,19 +148,24 @@ cmd_id_x_connected_name(struct imap_id_params *params,
 }
 
 static const struct imap_id_param_handler imap_login_id_params[] = {
-	{ "x-originating-ip", FALSE, cmd_id_x_originating_ip },
-	{ "x-originating-port", FALSE, cmd_id_x_originating_port },
-	{ "x-connected-ip", FALSE, cmd_id_x_connected_ip },
-	{ "x-connected-port", FALSE, cmd_id_x_connected_port },
-	{ "x-connected-name", FALSE, cmd_id_x_connected_name },
-	{ "x-proxy-ttl", FALSE, cmd_id_x_proxy_ttl },
-	{ "x-session-id", FALSE, cmd_id_x_session_id },
-	{ "x-session-ext-id", FALSE, cmd_id_x_session_id },
-	{ "x-client-transport", FALSE, cmd_id_x_client_transport },
-	{ "x-forward-", TRUE, cmd_id_x_forward_ },
-	{ "x-multiplex", FALSE, cmd_id_x_multiplex },
+	{ "x-originating-ip", IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS,
+	  cmd_id_x_originating_ip },
+	{ "x-originating-port", IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS,
+	  cmd_id_x_originating_port },
+	{ "x-connected-ip", IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS,
+	  cmd_id_x_connected_ip },
+	{ "x-connected-port", IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS,
+	  cmd_id_x_connected_port },
+	{ "x-connected-name", IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS,
+	  cmd_id_x_connected_name },
+	{ "x-proxy-ttl", 0, cmd_id_x_proxy_ttl },
+	{ "x-session-id", 0, cmd_id_x_session_id },
+	{ "x-session-ext-id", 0, cmd_id_x_session_id },
+	{ "x-client-transport", 0, cmd_id_x_client_transport },
+	{ "x-forward-", IMAP_ID_PARAM_FLAG_KEY_IS_PREFIX, cmd_id_x_forward_ },
+	{ "x-multiplex", 0, cmd_id_x_multiplex },
 
-	{ NULL, FALSE, NULL }
+	{ NULL, 0, NULL }
 };
 
 static const struct imap_id_param_handler *
@@ -165,7 +176,7 @@ imap_id_param_handler_find(const char *key)
 	for (unsigned int i = 0; imap_login_id_params[i].key != NULL; i++) {
 		if (str_begins_icase(key, imap_login_id_params[i].key, &suffix) &&
 		    (suffix[0] == '\0' ||
-		     imap_login_id_params[i].key_is_prefix))
+		     (imap_login_id_params[i].flags & IMAP_ID_PARAM_FLAG_KEY_IS_PREFIX) != 0))
 			return &imap_login_id_params[i];
 	}
 	return NULL;
@@ -183,13 +194,25 @@ static bool cmd_id_handle_keyvalue(struct imap_client *client,
 		imap_id_param_handler_find(key);
 	bool is_login_id_param = handler != NULL;
 
-	if (is_login_id_param && client->common.connection_trusted &&
-	    !client->id_logged && value != NULL) {
+	if (is_login_id_param)
+		client->cmd_id->seen_internal_keys = TRUE;
+	else
+		client->cmd_id->seen_external_keys = TRUE;
+
+	if (!is_login_id_param) {
+		/* not an internal key */
+	} else if (client->id_logged) {
+		/* using ID multiple times - ignore */
+	} else if (value == NULL) {
+		/* there should have been a value - ignore */
+	} else if (client->common.connection_trusted) {
 		if (!handler->callback(client->cmd_id->params, key, value)) {
 			e_debug(client->common.event,
 				"Client sent invalid ID parameter '%s'", key);
 			return FALSE;
 		}
+		if ((handler->flags & IMAP_ID_PARAM_FLAG_RELOAD_SETTINGS) != 0)
+			client->cmd_id->reload_settings = TRUE;
 	}
 
 	if (client->set->imap_id_retain && !is_login_id_param &&
@@ -226,8 +249,6 @@ static int cmd_id_handle_args(struct imap_client *client,
 			return 1;
 		if (arg->type != IMAP_ARG_LIST)
 			return -1;
-		if (!client->id_logged)
-			id->log_reply = str_new(default_pool, 64);
 		id->state = IMAP_CLIENT_ID_STATE_KEY;
 		break;
 	case IMAP_CLIENT_ID_STATE_KEY:
@@ -240,7 +261,7 @@ static int cmd_id_handle_args(struct imap_client *client,
 	case IMAP_CLIENT_ID_STATE_VALUE:
 		if (!imap_arg_get_nstring(arg, &value))
 			return -1;
-		if (!client->id_logged && id->log_reply != NULL) {
+		if (!client->id_logged) {
 			log_entry->reply = id->log_reply;
 			if (!cmd_id_handle_keyvalue(client, log_entry, id->key, value))
 				return -1;
@@ -285,18 +306,29 @@ static void cmd_id_copy_params(struct imap_client *client,
 	}
 }
 
-static void cmd_id_finish(struct imap_client *client)
+static int cmd_id_finish(struct imap_client *client)
 {
 	if (!client->id_logged) {
 		client->id_logged = TRUE;
 
-		if (client->cmd_id->log_reply != NULL &&
-		    str_len(client->cmd_id->log_reply) > 0) {
-			e_debug(client->cmd_id->params_event,
-				"Pre-login ID sent: %s",
-				str_sanitize(str_c(client->cmd_id->log_reply),
-					     IMAP_ID_PARAMS_LOG_MAX_LEN));
+		if (client->cmd_id->seen_internal_keys)
+			event_add_str(client->cmd_id->params_event, "internal", "yes");
+		if (client->cmd_id->seen_external_keys)
+			event_add_str(client->cmd_id->params_event, "external", "yes");
+		if (client->common.connection_trusted)
+			event_add_str(client->cmd_id->params_event, "trusted", "yes");
+
+		const char *prefix;
+		if (!client->cmd_id->seen_internal_keys)
+			prefix = "Pre-login ID sent";
+		else if (client->common.connection_trusted) {
+			prefix = "Pre-login internal ID sent from trusted client";
+		} else {
+			prefix = "Pre-login internal ID sent from untrusted client - ignoring";
 		}
+		e_debug(client->cmd_id->params_event, "%s: %s", prefix,
+			str_sanitize(str_c(client->cmd_id->log_reply),
+				     IMAP_ID_PARAMS_LOG_MAX_LEN));
 	}
 
 	client_send_raw(&client->common,
@@ -312,7 +344,20 @@ static void cmd_id_finish(struct imap_client *client)
 		cmd_id_copy_params(client, client->cmd_id->params);
 		msg = "Trusted ID completed.";
 	}
+
+	if (client->cmd_id->reload_settings) {
+		const char *error;
+		if (client_addresses_changed(&client->common, &error) < 0) {
+			client_send_reply_code(&client->common,
+					       IMAP_CMD_REPLY_NO,
+					       IMAP_RESP_CODE_SERVERBUG,
+					       "Failed to reload configuration");
+			client_destroy(&client->common, error);
+			return -1;
+		}
+	}
 	client_send_reply(&client->common, IMAP_CMD_REPLY_OK, msg);
+	return 0;
 }
 
 void cmd_id_free(struct imap_client *client)
@@ -347,6 +392,7 @@ int cmd_id(struct imap_client *client)
 		id->parser = imap_parser_create(client->common.input,
 						client->common.output,
 						IMAP_LOGIN_MAX_LINE_LENGTH);
+		id->log_reply = str_new(default_pool, 64);
 		if (client->set->imap_literal_minus)
 			imap_parser_enable_literal_minus(id->parser);
 		parser_flags = IMAP_PARSE_FLAG_STOP_AT_LIST;
@@ -382,7 +428,8 @@ int cmd_id(struct imap_client *client)
 	}
 	if (ret == 0) {
 		/* finished the line */
-		cmd_id_finish(client);
+		if (cmd_id_finish(client) < 0)
+			return -1;
 		cmd_id_free(client);
 		return 1;
 	} else if (ret == -1) {

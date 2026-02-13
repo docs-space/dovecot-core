@@ -31,9 +31,12 @@ AC_SUBST(ACLOCAL_AMFLAGS)
 AM_ICONV
 
 AC_ARG_ENABLE(devel-checks,
-AS_HELP_STRING([--enable-devel-checks], [Enable some extra expensive checks for developers]),
+AS_HELP_STRING([--enable-devel-checks@<:@=fast@:>@], [Enable some extra expensive checks for developers (fast enables only some of them)]),
 	if test x$enableval = xyes; then
 		AC_DEFINE(DEBUG,, [Build with extra debugging checks])
+		AC_DEFINE(DEBUG_FAST,, [Build with extra fast debugging checks])
+	elif test x$enableval = xfast; then
+		AC_DEFINE(DEBUG_FAST,, [Build with extra fast debugging checks])
 	fi)
 
 AC_ARG_ENABLE(static-checker,
@@ -364,7 +367,7 @@ AS_CASE(
    [none],   [BUILD_IMAP_HIBERNATE=0],
    [kqueue], [BUILD_IMAP_HIBERNATE=0],
    [BUILD_IMAP_HIBERNATE=1])
-AS_IF([test "$BUILD_IMAP_HIBERNATE"=1],
+AS_IF([test "$BUILD_IMAP_HIBERNATE" = 1],
       AC_DEFINE(BUILD_IMAP_HIBERNATE,, [Build with imap hibernate]))
 AM_CONDITIONAL([BUILD_IMAP_HIBERNATE], [test "$BUILD_IMAP_HIBERNATE" = 1])
 
@@ -609,19 +612,19 @@ LIBDOVECOT_LUA=''
 if test "$want_shared_libs" = "yes"; then
   LIBDOVECOT_DEPS='$(top_builddir)/src/lib-dovecot/libdovecot.la'
   LIBDOVECOT="$LIBDOVECOT_DEPS \$(MODULE_LIBS) \$(LIBPCRE_LIBS)"
-  LIBDOVECOT_STORAGE_DEPS='$(top_builddir)/src/lib-storage/libdovecot-storage.la $(top_builddir)/src/lib-imap-storage/libimap-storage.la'
+  LIBDOVECOT_STORAGE_DEPS='$(top_builddir)/src/lib-dovecot-storage/libdovecot-storage.la'
   LIBDOVECOT_LOGIN='$(top_builddir)/src/login-common/libdovecot-login.la'
   LIBDOVECOT_LDA='$(top_builddir)/src/lib-lda/libdovecot-lda.la'
   if test $want_lua != no; then
     LIBDOVECOT_LUA='$(top_builddir)/src/lib-lua/libdovecot-lua.la'
   fi
   if test $want_gssapi != no; then
-    LIBDOVECOT_GSSAPI='$(top_builddir)/src/lib-dovecot/libdovecot-gssapi.la'
+    LIBDOVECOT_GSSAPI='$(top_builddir)/src/lib-dovecot-gssapi/libdovecot-gssapi.la'
   fi
 else
   LIBDOVECOT_DEPS="$LIBDOVECOT_LA_LIBS"
   LIBDOVECOT="$LIBDOVECOT_DEPS \$(MODULE_LIBS) \$(LIBPCRE_LIBS)"
-  LIBDOVECOT_STORAGE_DEPS='$(top_builddir)/src/lib-storage/libstorage.la'
+  LIBDOVECOT_STORAGE_DEPS='$(top_builddir)/src/lib-imap-storage/libimap-storage.la $(top_builddir)/src/lib-storage/libstorage.la'
   LIBDOVECOT_LOGIN='$(top_builddir)/src/login-common/liblogin.la'
   LIBDOVECOT_LDA='$(top_builddir)/src/lib-lda/liblda.la'
   if test $want_lua != no; then
@@ -869,6 +872,8 @@ src/lib-login/Makefile
 src/lib-program-client/Makefile
 src/lib-otp/Makefile
 src/lib-dovecot/Makefile
+src/lib-dovecot-gssapi/Makefile
+src/lib-dovecot-storage/Makefile
 src/lib-sasl/Makefile
 src/lib-settings/Makefile
 src/lib-smtp/Makefile
@@ -887,6 +892,7 @@ src/lib-storage/index/dbox-multi/Makefile
 src/lib-storage/index/dbox-single/Makefile
 src/lib-storage/index/raw/Makefile
 src/lib-storage/index/shared/Makefile
+src/lib-storage-lua/Makefile
 src/lib-var-expand/Makefile
 src/lib-var-expand-crypt/Makefile
 src/anvil/Makefile

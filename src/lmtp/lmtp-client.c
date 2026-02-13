@@ -213,7 +213,7 @@ struct client *client_create(int fd_in, int fd_out,
 	}
 
 	client->conn = smtp_server_connection_create(
-		lmtp_server, fd_in, fd_out,
+		lmtp_server, fd_in, fd_out, &conn->local_ip, conn->local_port,
 		&conn->remote_ip, conn->remote_port, conn->ssl,
 		&lmtp_set, &lmtp_callbacks, client);
 	if (smtp_server_connection_is_trusted(client->conn)) {
@@ -383,6 +383,10 @@ client_connection_proxy_data_updated(void *context,
 {
 	struct client *client = context;
 
+	if (data->dest_ip.family != 0)
+		client->local_ip = data->dest_ip;
+	if (data->dest_port != 0)
+		client->local_port = data->dest_port;
 	client->remote_ip = data->source_ip;
 	client->remote_port = data->source_port;
 	client->local_name = data->local_name;

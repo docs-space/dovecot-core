@@ -22,7 +22,8 @@ struct dot_ostream {
 
 static int o_stream_dot_finish(struct ostream_private *stream)
 {
-	struct dot_ostream *dstream = (struct dot_ostream *)stream;
+	struct dot_ostream *dstream =
+		container_of(stream, struct dot_ostream, ostream);
 	int ret;
 
 	if (dstream->state == STREAM_STATE_DONE)
@@ -65,7 +66,10 @@ o_stream_dot_flush(struct ostream_private *stream)
 static void
 o_stream_dot_close(struct iostream_private *stream, bool close_parent)
 {
-	struct dot_ostream *dstream = (struct dot_ostream *)stream;
+	struct ostream_private *ostream =
+		container_of(stream, struct ostream_private, iostream);
+	struct dot_ostream *dstream =
+		container_of(ostream, struct dot_ostream, ostream);
 
 	if (close_parent)
 		o_stream_close(dstream->ostream.parent);
@@ -75,7 +79,8 @@ static ssize_t
 o_stream_dot_sendv(struct ostream_private *stream,
 		    const struct const_iovec *iov, unsigned int iov_count)
 {
-	struct dot_ostream *dstream = (struct dot_ostream *)stream;
+	struct dot_ostream *dstream =
+		container_of(stream, struct dot_ostream, ostream);
 	ARRAY(struct const_iovec) iov_arr;
 	const struct const_iovec *iov_new;
 	size_t max_bytes, sent, added;
@@ -84,7 +89,8 @@ o_stream_dot_sendv(struct ostream_private *stream,
 
 	i_assert(dstream->state != STREAM_STATE_DONE);
 
-	if ((ret=o_stream_flush(stream->parent)) <= 0) {
+	ret = o_stream_flush(stream->parent);
+	if (ret <= 0) {
 		/* error / we still couldn't flush existing data to
 		   parent stream. */
 		if (ret < 0)
@@ -100,17 +106,25 @@ o_stream_dot_sendv(struct ostream_private *stream,
 	sent = added = 0;
 	for (i = 0; i < iov_count && max_bytes > 0; i++) {
 		size_t size = iov[i].iov_len, chunk;
-		const char *data = iov[i].iov_base, *p, *pend;
+		const unsigned char *data = iov[i].iov_base, *p, *pend;
 		struct const_iovec iovn;
 
 		p = data;
 		pend = CONST_PTR_OFFSET(data, size);
-		for (; p < pend && (size_t)(p-data)+2 < max_bytes; p++) {
+		for (; p < pend && ((size_t)(p - data) + 2) < max_bytes; p++) {
 			char add = 0;
 
+			size = pend - p;
 			switch (dstream->state) {
 			/* none */
-			case STREAM_STATE_NONE:
+			case STREAM_STATE_NONE: {
+				size_t maxlen = I_MIN(size, max_bytes - ((size_t)(p - data) + 2));
+				p = CONST_PTR_OFFSET(p, i_memcspn(p, maxlen, "\r\n", 2));
+				i_assert(p <= pend);
+				if (p == pend) {
+					p--;
+					continue;
+				}
 				switch (*p) {
 				case '\n':
 					dstream->state = STREAM_STATE_CRLF;
@@ -120,10 +134,14 @@ o_stream_dot_sendv(struct ostream_private *stream,
 				case '\r':
 					dstream->state = STREAM_STATE_CR;
 					break;
+				default:
+					break;
 				}
 				break;
+			}
 			/* got CR */
 			case STREAM_STATE_CR:
+				i_assert(p < pend);
 				switch (*p) {
 				case '\r':
 					break;
@@ -138,6 +156,7 @@ o_stream_dot_sendv(struct ostream_private *stream,
 			/* got CRLF, or the first line */
 			case STREAM_STATE_INIT:
 			case STREAM_STATE_CRLF:
+				i_assert(p < pend);
 				switch (*p) {
 				case '\r':
 					dstream->state = STREAM_STATE_CR;
@@ -186,8 +205,9 @@ o_stream_dot_sendv(struct ostream_private *stream,
 
 		if (max_bytes == 0)
 			break;
-		chunk = ((size_t)(p-data) >= max_bytes ?
-				max_bytes : (size_t)(p - data));
+		i_assert(p <= pend);
+		chunk = ((size_t)(p - data) >= max_bytes ?
+			 max_bytes : (size_t)(p - data));
 		if (chunk > 0) {
 			iovn.iov_base = data;
 			iovn.iov_len = chunk;
@@ -202,7 +222,7 @@ o_stream_dot_sendv(struct ostream_private *stream,
 	iov_new = array_get(&iov_arr, &count);
 	if (count == 0) {
 		ret = 0;
-	} else if ((ret=o_stream_sendv(stream->parent, iov_new, count)) <= 0) {
+	} else if ((ret = o_stream_sendv(stream->parent, iov_new, count)) <= 0) {
 		i_assert(ret < 0);
 		o_stream_copy_error_from_parent(stream);
 		return -1;

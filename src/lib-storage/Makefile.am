@@ -124,47 +124,10 @@ shlibs = \
 	list/libstorage_list.la \
 	index/libstorage_index.la \
 	../lib-index/libindex.la \
-	../lib-imap-storage/libimap-storage.la \
 	../lib-language/liblanguage.la
 
 libstorage_la_LIBADD = $(shlibs)
 libstorage_la_DEPENDENCIES = $(shlibs)
-
-pkglib_LTLIBRARIES = libdovecot-storage.la
-libdovecot_storage_la_SOURCES =
-libdovecot_storage_la_LIBADD = \
-	libstorage.la \
-	$(LIBDOVECOT) \
-	$(LINKED_STORAGE_LDADD)
-libdovecot_storage_la_DEPENDENCIES = \
-	libstorage.la \
-	$(LIBDOVECOT_DEPS)
-libdovecot_storage_la_LDFLAGS = -export-dynamic
-
-if HAVE_LUA
-pkglib_LTLIBRARIES += libdovecot-storage-lua.la
-libdovecot_storage_lua_la_SOURCES = \
-	mail-lua.c \
-	mail-user-lua.c \
-	mail-storage-lua.c \
-	mailbox-lua.c \
-	mailbox-attribute-lua.c
-libdovecot_storage_lua_la_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
-	$(LUA_CFLAGS) \
-	-I$(top_srcdir)/src/lib-lua
-libdovecot_storage_lua_la_LIBADD = \
-	libdovecot-storage.la \
-	../lib-lua/libdovecot-lua.la
-libdovecot_storage_lua_la_DEPENDENCIES = \
-	libdovecot-storage.la \
-	../lib-lua/libdovecot-lua.la
-libdovecot_storage_lua_la_LDFLAGS = -export-dynamic
-
-headers += \
-	mail-storage-lua.h \
-	mail-storage-lua-private.h
-endif
 
 test_programs = \
 	test-mail-search-args-imap \

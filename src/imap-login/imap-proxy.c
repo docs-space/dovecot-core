@@ -194,7 +194,7 @@ static int proxy_input_banner(struct imap_client *client,
 	string_t *str;
 	int ret;
 
-	if (!str_begins(line, "* OK ", &line)) {
+	if (!str_begins_icase(line, "* OK ", &line)) {
 		const char *reason = t_strdup_printf("Invalid banner: %s",
 			str_sanitize(line, 160));
 		login_proxy_failed(client->common.login_proxy,
@@ -204,7 +204,7 @@ static int proxy_input_banner(struct imap_client *client,
 	}
 
 	str = t_str_new(128);
-	if (str_begins(line, "[CAPABILITY ", &suffix)) {
+	if (str_begins_icase(line, "[CAPABILITY ", &suffix)) {
 		capabilities = t_strsplit(t_strcut(suffix, ']'), " ");
 		if (str_array_icase_find(capabilities, "SASL-IR"))
 			client->proxy_sasl_ir = TRUE;
@@ -383,7 +383,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 		imap_client->proxy_sent_state &= ENUM_NEGATE(IMAP_PROXY_SENT_STATE_STARTTLS);
 		imap_client->proxy_rcvd_state = IMAP_PROXY_RCVD_STATE_STARTTLS;
 
-		if (!str_begins_with(suffix, "OK ")) {
+		if (!str_begins_icase_with(suffix, "OK ")) {
 			/* STARTTLS failed */
 			const char *reason = t_strdup_printf(
 				"STARTTLS failed: %s",
@@ -403,7 +403,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 			return -1;
 		o_stream_nsend(output, str_data(str), str_len(str));
 		return 1;
-	} else if (str_begins(line, "L OK ", &suffix)) {
+	} else if (str_begins_icase(line, "L OK ", &suffix)) {
 		/* Login successful. Send this line to client. */
 		imap_client->proxy_sent_state &= ENUM_NEGATE(IMAP_PROXY_SENT_STATE_LOGIN);
 		imap_client->proxy_rcvd_state = IMAP_PROXY_RCVD_STATE_LOGIN;
@@ -422,7 +422,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 		enum login_proxy_failure_type failure_type =
 			LOGIN_PROXY_FAILURE_TYPE_AUTH_REPLIED;
 #define STR_NO_IMAP_RESP_CODE_AUTHFAILED "NO ["IMAP_RESP_CODE_AUTHFAILED"]"
-		if (str_begins_with(line, STR_NO_IMAP_RESP_CODE_AUTHFAILED)) {
+		if (str_begins_icase_with(line, STR_NO_IMAP_RESP_CODE_AUTHFAILED)) {
 			/* the remote sent a generic "authentication failed"
 			   error. replace it with our one, so that in case
 			   the remote is sending a different error message
@@ -431,7 +431,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 			client_send_reply_code(client, IMAP_CMD_REPLY_NO,
 					       IMAP_RESP_CODE_AUTHFAILED,
 					       AUTH_FAILED_MSG);
-		} else if (str_begins_with(line, "NO [")) {
+		} else if (str_begins_icase_with(line, "NO [")) {
 			/* remote sent some other resp-code. forward it. */
 			if (auth_resp_code_is_tempfail(line + 4))
 				failure_type = LOGIN_PROXY_FAILURE_TYPE_AUTH_TEMPFAIL;
@@ -439,7 +439,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 							       &log_line))
 				failure_type = LOGIN_PROXY_FAILURE_TYPE_AUTH_REDIRECT;
 			else if (auth_resp_code_is_serverbug(line + 4))
-				failure_type = LOGIN_PROXY_FAILURE_TYPE_REMOTE;
+				failure_type = LOGIN_PROXY_FAILURE_TYPE_REMOTE_CONFIG;
 			else {
 				if (auth_resp_code_is_limit(line + 4))
 					failure_type = LOGIN_PROXY_FAILURE_TYPE_AUTH_LIMIT_REACHED_REPLIED;
@@ -471,7 +471,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 		/* Reply to CAPABILITY command we sent */
 		imap_client->proxy_sent_state &= ENUM_NEGATE(IMAP_PROXY_SENT_STATE_CAPABILITY);
 		imap_client->proxy_rcvd_state = IMAP_PROXY_RCVD_STATE_CAPABILITY;
-		if (str_begins_with(line, "C OK ") &&
+		if (str_begins_icase_with(line, "C OK ") &&
 		    HAS_NO_BITS(imap_client->proxy_sent_state,
 				IMAP_PROXY_SENT_STATE_AUTHENTICATE |
 				IMAP_PROXY_SENT_STATE_LOGIN)) {
@@ -483,12 +483,24 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 			return 1;
 		}
 		return 0;
-	} else if (str_begins_icase_with(line, "I ")) {
+	} else if (str_begins_icase(line, "I ", &line)) {
 		/* Reply to ID command we sent, ignore it unless
 		   pipelining is disabled, in which case send
 		   either STARTTLS or login */
 		imap_client->proxy_sent_state &= ENUM_NEGATE(IMAP_PROXY_SENT_STATE_ID);
 		imap_client->proxy_rcvd_state = IMAP_PROXY_RCVD_STATE_ID;
+
+		if (str_begins_icase(line, "NO ["IMAP_RESP_CODE_SERVERBUG"] ", &line)) {
+			login_proxy_failed(client->login_proxy,
+				login_proxy_get_event(client->login_proxy),
+				LOGIN_PROXY_FAILURE_TYPE_REMOTE_CONFIG,
+				t_strdup_printf("ID command failed: %s", line));
+			return -1;
+		} else if (!str_begins_icase(line, "OK", &line)) {
+			e_debug(login_proxy_get_event(client->login_proxy),
+				"ID command failed, ignoring: %s",
+				str_sanitize(line, 160));
+		}
 
 		if (client->proxy_nopipelining) {
 			str = t_str_new(128);
@@ -505,7 +517,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 	} else if (str_begins_icase_with(line, "* ID ")) {
 		/* Reply to ID command we sent, ignore it */
 		return 0;
-	} else if (str_begins(line, "* MULTIPLEX ", &suffix)) {
+	} else if (str_begins_icase(line, "* MULTIPLEX ", &suffix)) {
 		if (strcmp(suffix, "0") != 0) {
 			const char *reason = t_strdup_printf(
 				"Unsupported MULTIPLEX version: %s", suffix);
@@ -524,7 +536,7 @@ int imap_proxy_parse_line(struct client *client, const char *line)
 		login_proxy_multiplex_input_start(client->login_proxy);
 		/* force caller to refresh istream */
 		return 1;
-	} else if (str_begins_with(line, "* BYE ")) {
+	} else if (str_begins_icase_with(line, "* BYE ")) {
 		/* Login unexpectedly failed (due to some internal error).
 		   Don't forward the BYE to the client, since we're not going
 		   to disconnect it. It could be a possibility to convert these

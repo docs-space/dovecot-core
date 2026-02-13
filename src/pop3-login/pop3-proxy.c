@@ -44,10 +44,13 @@ static int proxy_send_login(struct pop3_client *client, struct ostream *output)
                         }
 		}
 
-		str_printfa(str, "XCLIENT ADDR=%s PORT=%u SESSION=%s TTL=%u "
+		str_printfa(str, "XCLIENT ADDR=%s PORT=%u "
+			    "DESTADDR=%s DESTPORT=%u SESSION=%s TTL=%u "
 			    "CLIENT-TRANSPORT=%s",
 			    net_ip2addr(&client->common.ip),
 			    client->common.remote_port,
+			    net_ip2addr(&client->common.local_ip),
+			    client->common.local_port,
 			    client_get_session_id(&client->common),
 			    client->common.proxy_ttl - 1,
 			    client->common.end_client_tls_secured ?
@@ -60,6 +63,7 @@ static int proxy_send_login(struct pop3_client *client, struct ostream *output)
 			str_append(str, " FORWARD=");
 			base64_encode(str_data(fwd), str_len(fwd), str);
 		}
+		e_info(client->common.event, "Send: %s", str_c(str));
 		str_append(str, "\r\n");
 		/* remote supports XCLIENT, send it */
 		o_stream_nsend(output, str_data(str), str_len(str));
@@ -249,9 +253,11 @@ int pop3_proxy_parse_line(struct client *client, const char *line)
 		if (!str_begins_with(line, "+OK")) {
 			const char *reason = t_strdup_printf(
 				"XCLIENT failed: %s", str_sanitize(line, 160));
+			/* XCLIENT failure is some misconfiguration - don't try
+			   to reconnect. */
 			login_proxy_failed(client->login_proxy,
 				login_proxy_get_event(client->login_proxy),
-				LOGIN_PROXY_FAILURE_TYPE_REMOTE, reason);
+				LOGIN_PROXY_FAILURE_TYPE_REMOTE_CONFIG, reason);
 			return -1;
 		}
 		pop3_client->proxy_state = client->proxy_sasl_client == NULL ?

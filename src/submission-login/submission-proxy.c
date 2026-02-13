@@ -184,6 +184,17 @@ proxy_send_xclient(struct submission_client *client, struct ostream *output)
 			addr = t_strconcat("IPV6:", addr, NULL);
 		proxy_send_xclient_more(client, output, str, "ADDR", addr);
 	}
+	if (str_array_icase_find(client->proxy_xclient, "DESTPORT")) {
+		proxy_send_xclient_more(
+			client, output, str, "DESTPORT",
+			t_strdup_printf("%u", client->common.local_port));
+	}
+	if (str_array_icase_find(client->proxy_xclient, "DESTADDR")) {
+		const char *addr = net_ip2addr(&client->common.local_ip);
+		if (client->common.local_ip.family == AF_INET6)
+			addr = t_strconcat("IPV6:", addr, NULL);
+		proxy_send_xclient_more(client, output, str, "DESTADDR", addr);
+	}
 	if (str_array_icase_find(client->proxy_xclient, "SESSION")) {
 		proxy_send_xclient_more(client, output, str, "SESSION",
 					client_get_session_id(&client->common));
@@ -612,9 +623,11 @@ int submission_proxy_parse_line(struct client *client, const char *line)
 		if (invalid_line || (status / 100) != 2) {
 			const char *reason = t_strdup_printf(
 				"XCLIENT failed: %s", str_sanitize(line, 160));
+			/* XCLIENT failure is some misconfiguration - don't try
+			   to reconnect. */
 			login_proxy_failed(client->login_proxy,
 				login_proxy_get_event(client->login_proxy),
-				LOGIN_PROXY_FAILURE_TYPE_REMOTE, reason);
+				LOGIN_PROXY_FAILURE_TYPE_REMOTE_CONFIG, reason);
 			return -1;
 		}
 		if (!last_line)
