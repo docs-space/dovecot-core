@@ -92,10 +92,24 @@ void admin_cmd_send(const char *service, pid_t pid, const char *cmd,
 
 static void client_connected(struct master_service_connection *conn)
 {
-	bool master = conn->listen_fd == MASTER_LISTEN_FD_FIRST;
+	/* The first listen_fd is a pipe connected directly to the master
+	   process. It's not actually the first configured listener in the
+	   service settings. */
+	enum anvil_connection_type type;
+
+	if (conn->listen_fd == MASTER_LISTEN_FD_FIRST)
+		type = ANVIL_CONNECTION_TYPE_MASTER;
+	else {
+		const char *type_str = master_service_connection_get_type(conn);
+
+		if (strcmp(type_str, "penalty") == 0)
+			type = ANVIL_CONNECTION_TYPE_AUTH_PENALTY;
+		else
+			type = ANVIL_CONNECTION_TYPE_DEFAULT;
+	}
 
 	master_service_client_connection_accept(conn);
-	anvil_connection_create(conn->fd, master, conn->fifo);
+	anvil_connection_create(conn->fd, type, conn->fifo);
 }
 
 static void ATTR_NULL(1)

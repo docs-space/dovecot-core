@@ -144,8 +144,8 @@ const struct mail_storage_settings mail_storage_default_settings = {
 	.mail_max_keyword_length = 50,
 	.mail_max_lock_timeout = 0,
 	.mail_temp_scan_interval = 7*24*60*60,
-	.mail_vsize_bg_after_count = 0,
-	.mail_sort_max_read_count = 0,
+	.mail_vsize_bg_after_count = SET_UINT_UNLIMITED,
+	.mail_sort_max_read_count = SET_UINT_UNLIMITED,
 	.mail_save_crlf = FALSE,
 	.mail_fsync = "optimized:never:always",
 	.mmap_disable = FALSE,
@@ -433,9 +433,9 @@ static const struct mail_user_settings mail_user_default_settings = {
 	.valid_chroot_dirs = ARRAY_INIT,
 
 	.first_valid_uid = 500,
-	.last_valid_uid = 0,
+	.last_valid_uid = SET_UINT_UNLIMITED,
 	.first_valid_gid = 1,
-	.last_valid_gid = 0,
+	.last_valid_gid = SET_UINT_UNLIMITED,
 
 	.mail_plugins = ARRAY_INIT,
 	.mail_plugin_dir = MODULEDIR,
@@ -623,6 +623,28 @@ mail_storage_settings_ext_check(struct event *event, void *_set, pool_t pool,
 		*error_r = "mailbox_idle_check_interval must not be 0";
 		return FALSE;
 	}
+	if (set->mail_sort_max_read_count == 0) {
+		*error_r = "mail_sort_max_read_count must not be 0";
+		return FALSE;
+	}
+	if (set->mail_vsize_bg_after_count == 0) {
+		*error_r = "mail_vsize_bg_after_count must not be 0";
+		return FALSE;
+	}
+
+	if (set->mail_cache_max_header_name_length == 0) {
+		*error_r = "mail_cache_max_header_name_length must not be 0";
+		return FALSE;
+	}
+	if (set->mail_cache_max_header_name_length == SET_UINT_UNLIMITED)
+		set->mail_cache_max_header_name_length = 0;
+
+	if (set->mail_cache_max_headers_count == 0) {
+		*error_r = "mail_cache_max_headers_count must not be 0";
+		return FALSE;
+	}
+	if (set->mail_cache_max_headers_count == SET_UINT_UNLIMITED)
+		set->mail_cache_max_headers_count = 0;
 
 	if (strcmp(set->mail_fsync, "optimized") == 0)
 		set->parsed_fsync_mode = FSYNC_MODE_OPTIMIZED;
@@ -989,6 +1011,14 @@ static bool mail_user_settings_check(void *_set, pool_t pool ATTR_UNUSED,
 	(void)parse_postmaster_address(set->postmaster_address, pool,
 				       set, &error);
 #else
+	if (set->last_valid_uid == 0) {
+		*error_r = "last_valid_uid must not be 0";
+		return FALSE;
+	}
+	if (set->last_valid_gid == 0) {
+		*error_r = "last_valid_gid must not be 0";
+		return FALSE;
+	}
 	if (array_is_created(&set->mail_plugins) &&
 	    array_not_empty(&set->mail_plugins) &&
 	    faccessat(AT_FDCWD, set->mail_plugin_dir, R_OK | X_OK, AT_EACCESS) < 0) {

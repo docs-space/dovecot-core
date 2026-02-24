@@ -50,8 +50,8 @@ struct anvil_connection {
 	struct ostream *cmd_output;
 	struct io *cmd_io;
 
+	enum anvil_connection_type conn_type;
 	char *service;
-	bool master:1;
 	bool fifo:1;
 	bool added_to_hash:1;
 };
@@ -392,6 +392,12 @@ anvil_connection_request(struct anvil_connection *conn,
 	time_t stamp;
 	pid_t pid;
 
+	if (conn->conn_type == ANVIL_CONNECTION_TYPE_AUTH_PENALTY &&
+	    !str_begins_with(cmd, "PENALTY-")) {
+		*error_r = "Only PENALTY-* commands allowed";
+		return -1;
+	}
+
 	anvil_global_cmd_counter++;
 	anvil_refresh_proctitle_delayed();
 
@@ -497,7 +503,7 @@ anvil_connection_request(struct anvil_connection *conn,
 			*error_r = "KILL: Not enough parameters";
 			return -1;
 		}
-		if (!conn->master) {
+		if (conn->conn_type != ANVIL_CONNECTION_TYPE_MASTER) {
 			*error_r = "KILL sent by a non-master connection";
 			return -1;
 		}
@@ -641,7 +647,9 @@ anvil_connection_input_line(struct connection *_conn, const char *line)
 	if (!conn->conn.version_received) {
 		if (!version_string_verify(line, "anvil-client",
 				ANVIL_CLIENT_PROTOCOL_MAJOR_VERSION)) {
-			if (anvil_restarted && (conn->master || conn->fifo)) {
+			if (anvil_restarted &&
+			    (conn->conn_type == ANVIL_CONNECTION_TYPE_MASTER ||
+			     conn->fifo)) {
 				/* old pending data. ignore input until we get
 				   the handshake. */
 				return 1;
@@ -676,7 +684,7 @@ anvil_connection_input_line(struct connection *_conn, const char *line)
 	return 1;
 }
 
-void anvil_connection_create(int fd, bool master, bool fifo)
+void anvil_connection_create(int fd, enum anvil_connection_type type, bool fifo)
 {
 	struct anvil_connection *conn;
 
@@ -690,7 +698,7 @@ void anvil_connection_create(int fd, bool master, bool fifo)
 		o_stream_nsend_str(conn->conn.output,
 				   "VERSION\tanvil-server\t2\t0\n");
 	}
-	conn->master = master;
+	conn->conn_type = type;
 	conn->fifo = fifo;
 	i_array_init(&conn->commands, 8);
 }
