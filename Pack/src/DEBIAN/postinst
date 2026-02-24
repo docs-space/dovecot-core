@@ -44,6 +44,10 @@ read_params_debconf()
     MDA_DB_PWD="${RET:-saSA123$}"
 #    db_get r7mailserver/upgrade
 #    UPGRADE="$RET"
+    db_get r7mdaserver/fqdn-name || true
+    printf "Debug: $RET\n"
+    HOSTNAME="${RET:-localhost}"
+
 	echo "Current parameters:"
     echo "MDA_API_KEY: $MDA_API_KEY"
     echo "MDA_CERT_FILENAME: $MDA_CERT_FILENAME"
@@ -54,6 +58,7 @@ read_params_debconf()
     echo "MDA_DB_NAME: $MDA_DB_NAME"
     echo "MDA_DB_USER: $MDA_DB_USER"
     echo "MDA_DB_PWD: $MDA_DB_PWD"
+    echo "HOSTNAME: $HOSTNAME"
 
 }
 
@@ -113,6 +118,7 @@ conf_cert()
 	sed -i "s#{{ MDA_SSL_CERT }}#$MDA_CERT_FILENAME#g" $MDA_CONF_ENV
 	sed -i "s#{{ MDA_SSL_KEY }}#$MDA_KEY_FILENAME#g" $MDA_CONF_ENV
 	sed -i "s#{{ MDA_DH_KEY }}#$MDA_DH_FILENAME#g" $MDA_CONF_ENV
+	sed -i "s#{{ HOSTNAME }}#$HOSTNAME#g" $MDA_CONF_ENV
 }
 
 conf_db()

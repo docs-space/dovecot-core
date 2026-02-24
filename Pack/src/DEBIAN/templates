@@ -56,3 +56,9 @@ Template: r7mdaserver/upgrade
 Type: boolean
 Default: false
 Description: upgrade
+
+Template: r7mdaserver/fqdn-name
+Type: string
+Default: mx.localhost
+Description: FQDN name
+
