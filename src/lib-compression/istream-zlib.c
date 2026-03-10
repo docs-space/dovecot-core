@@ -40,7 +40,8 @@ static void i_stream_zlib_init(struct zlib_istream *zstream);
 static void i_stream_zlib_close(struct iostream_private *stream,
 				bool close_parent)
 {
-	struct zlib_istream *zstream = (struct zlib_istream *)stream;
+	struct zlib_istream *zstream =
+		container_of(stream, struct zlib_istream, istream.iostream);
 
 	if (!zstream->zs_closed) {
 		(void)inflateEnd(&zstream->zs);
@@ -58,15 +59,17 @@ static void zlib_read_error(struct zlib_istream *zstream, const char *error)
 			    i_stream_get_absolute_offset(&zstream->istream.istream));
 }
 
-static int i_stream_zlib_read_header(struct istream_private *stream)
+static int
+i_stream_zlib_read_header_more(struct zlib_istream *zstream,
+			       const unsigned char **data_r, size_t *size_r)
 {
-	struct zlib_istream *zstream = (struct zlib_istream *)stream;
-	const unsigned char *data;
+	struct istream_private *stream = &zstream->istream;
 	size_t size;
-	unsigned int pos, fextra_size;
 	int ret;
 
-	ret = i_stream_read_bytes(stream->parent, &data, &size,
+	*size_r = 0;
+
+	ret = i_stream_read_bytes(stream->parent, data_r, &size,
 				  zstream->prev_size + 1);
 	if (size == zstream->prev_size) {
 		stream->istream.stream_errno = stream->parent->stream_errno;
@@ -82,6 +85,17 @@ static int i_stream_zlib_read_header(struct istream_private *stream)
 		return ret;
 	}
 	zstream->prev_size = size;
+
+	*size_r = size;
+	return 1;
+}
+
+static int
+i_stream_zlib_parse_header(struct zlib_istream *zstream,
+			   const unsigned char *data, size_t size)
+{
+	struct istream_private *stream = &zstream->istream;
+	unsigned int pos, fextra_size;
 
 	if (size < GZ_HEADER_MIN_SIZE)
 		return 0;
@@ -121,7 +135,52 @@ static int i_stream_zlib_read_header(struct istream_private *stream)
 		pos += 2;
 	}
 	i_stream_skip(stream->parent, pos);
+	return 1;
+}
+
+static int i_stream_zlib_read_header(struct zlib_istream *zstream)
+{
+	const unsigned char *data;
+	size_t size;
+	int ret;
+
+	for (;;) {
+		ret = i_stream_zlib_read_header_more(zstream, &data, &size);
+		if (ret <= 0)
+			return ret;
+		ret = i_stream_zlib_parse_header(zstream, data, size);
+		if (ret < 0)
+			return ret;
+		if (ret > 0)
+			break;
+	}
+
 	zstream->prev_size = 0;
+	return 1;
+}
+
+static int
+i_stream_zlib_read_trailer_more(struct zlib_istream *zstream,
+				const unsigned char **data_r, size_t *size_r)
+{
+	struct istream_private *stream = &zstream->istream;
+	size_t size;
+	int ret;
+
+	ret = i_stream_read_bytes(stream->parent, data_r, &size,
+				  GZ_TRAILER_SIZE);
+	if (size == zstream->prev_size) {
+		i_assert(ret <= 0);
+		stream->istream.stream_errno = stream->parent->stream_errno;
+		if (ret == -1 && stream->istream.stream_errno == 0) {
+			zlib_read_error(zstream, "missing gz trailer");
+			stream->istream.stream_errno = EINVAL;
+		}
+		return ret;
+	}
+	zstream->prev_size = size;
+
+	*size_r = size;
 	return 1;
 }
 
@@ -132,20 +191,11 @@ static int i_stream_zlib_read_trailer(struct zlib_istream *zstream)
 	size_t size;
 	int ret;
 
-	ret = i_stream_read_bytes(stream->parent, &data, &size,
-				  GZ_TRAILER_SIZE);
-	if (size == zstream->prev_size) {
-		stream->istream.stream_errno = stream->parent->stream_errno;
-		if (ret == -1 && stream->istream.stream_errno == 0) {
-			zlib_read_error(zstream, "missing gz trailer");
-			stream->istream.stream_errno = EINVAL;
-		}
-		return ret;
-	}
-	zstream->prev_size = size;
-
-	if (size < GZ_TRAILER_SIZE)
-		return 0;
+	do {
+		ret = i_stream_zlib_read_trailer_more(zstream, &data, &size);
+		if (ret <= 0)
+			return ret;
+	} while (size < GZ_TRAILER_SIZE);
 
 	if (le32_to_cpu_unaligned(data) != zstream->crc32) {
 		zlib_read_error(zstream, "gz trailer has wrong CRC value");
@@ -160,7 +210,8 @@ static int i_stream_zlib_read_trailer(struct zlib_istream *zstream)
 
 static ssize_t i_stream_zlib_read(struct istream_private *stream)
 {
-	struct zlib_istream *zstream = (struct zlib_istream *)stream;
+	struct zlib_istream *zstream =
+		container_of(stream, struct zlib_istream, istream);
 	const unsigned char *data;
 	uoff_t high_offset;
 	size_t size, out_size;
@@ -223,7 +274,7 @@ static ssize_t i_stream_zlib_read(struct istream_private *stream)
 
 	if (!zstream->header_read) {
 		do {
-			ret = i_stream_zlib_read_header(stream);
+			ret = i_stream_zlib_read_header(zstream);
 		} while (ret == 0 && stream->istream.blocking);
 		if (ret <= 0)
 			return ret;
@@ -362,7 +413,8 @@ static void i_stream_zlib_reset(struct zlib_istream *zstream)
 static void
 i_stream_zlib_seek(struct istream_private *stream, uoff_t v_offset, bool mark)
 {
-	struct zlib_istream *zstream = (struct zlib_istream *) stream;
+	struct zlib_istream *zstream =
+		container_of(stream, struct zlib_istream, istream);
 
 	if (i_stream_nonseekable_try_seek(stream, v_offset))
 		return;
@@ -378,7 +430,8 @@ i_stream_zlib_seek(struct istream_private *stream, uoff_t v_offset, bool mark)
 
 static void i_stream_zlib_sync(struct istream_private *stream)
 {
-	struct zlib_istream *zstream = (struct zlib_istream *) stream;
+	struct zlib_istream *zstream =
+		container_of(stream, struct zlib_istream, istream);
 	const struct stat *st;
 
 	if (i_stream_stat(stream->parent, FALSE, &st) == 0) {

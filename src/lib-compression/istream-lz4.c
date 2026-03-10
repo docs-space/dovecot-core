@@ -25,7 +25,8 @@ struct lz4_istream {
 static void i_stream_lz4_close(struct iostream_private *stream,
 			       bool close_parent)
 {
-	struct lz4_istream *zstream = (struct lz4_istream *)stream;
+	struct lz4_istream *zstream =
+		container_of(stream, struct lz4_istream, istream.iostream);
 
 	buffer_free(&zstream->chunk_buf);
 	if (close_parent)
@@ -42,17 +43,19 @@ static void lz4_read_error(struct lz4_istream *zstream, const char *error)
 
 static int i_stream_lz4_read_header(struct lz4_istream *zstream)
 {
+	struct istream_private *stream = &zstream->istream;
 	const struct iostream_lz4_header *hdr;
 	const unsigned char *data;
 	size_t size;
 	int ret;
 
-	ret = i_stream_read_bytes(zstream->istream.parent, &data,
-				  &size, sizeof(*hdr));
-	size = I_MIN(size, sizeof(*hdr));
+	i_assert(zstream->chunk_buf->used <= sizeof(*hdr));
+	size_t wanted = sizeof(*hdr) - zstream->chunk_buf->used;
+	ret = i_stream_read_bytes(stream->parent, &data, &size, wanted);
+	size = I_MIN(size, wanted);
 	buffer_append(zstream->chunk_buf, data, size);
 	i_stream_skip(zstream->istream.parent, size);
-	if (ret < 0 || (ret == 0 && zstream->istream.istream.eof)) {
+	if (ret < 0) {
 		i_assert(ret != -2);
 		if (zstream->istream.istream.stream_errno == 0) {
 			lz4_read_error(zstream, "missing header (not lz4 file?)");
@@ -77,9 +80,10 @@ static int i_stream_lz4_read_header(struct lz4_istream *zstream)
 	zstream->max_uncompressed_chunk_size =
 		be32_to_cpu_unaligned(hdr->max_uncompressed_chunk_size);
 	buffer_set_used_size(zstream->chunk_buf, 0);
-	if (zstream->max_uncompressed_chunk_size > ISTREAM_LZ4_CHUNK_SIZE) {
+	if (zstream->max_uncompressed_chunk_size  == 0 ||
+	    zstream->max_uncompressed_chunk_size > ISTREAM_LZ4_CHUNK_SIZE) {
 		lz4_read_error(zstream, t_strdup_printf(
-			"lz4 max chunk size too large (%u > %u)",
+			"invalid lz4 max chunk size (%u, max %u)",
 			zstream->max_uncompressed_chunk_size,
 			ISTREAM_LZ4_CHUNK_SIZE));
 		zstream->istream.istream.stream_errno = EINVAL;
@@ -96,8 +100,9 @@ static int i_stream_lz4_read_chunk_header(struct lz4_istream *zstream)
 	struct istream_private *stream = &zstream->istream;
 
 	i_assert(zstream->chunk_buf->used <= IOSTREAM_LZ4_CHUNK_PREFIX_LEN);
-	ret = i_stream_read_more(stream->parent, &data, &size);
-	size = I_MIN(size, IOSTREAM_LZ4_CHUNK_PREFIX_LEN - zstream->chunk_buf->used);
+	size_t wanted = IOSTREAM_LZ4_CHUNK_PREFIX_LEN - zstream->chunk_buf->used;
+	ret = i_stream_read_bytes(stream->parent, &data, &size, wanted);
+	size = I_MIN(size, wanted);
 	buffer_append(zstream->chunk_buf, data, size);
 	i_stream_skip(stream->parent, size);
 	if (ret < 0) {
@@ -131,7 +136,8 @@ static int i_stream_lz4_read_chunk_header(struct lz4_istream *zstream)
 
 static ssize_t i_stream_lz4_read(struct istream_private *stream)
 {
-	struct lz4_istream *zstream = (struct lz4_istream *)stream;
+	struct lz4_istream *zstream =
+		container_of(stream, struct lz4_istream, istream);
 	const unsigned char *data;
 	size_t size;
 	int ret;
@@ -141,10 +147,12 @@ static ssize_t i_stream_lz4_read(struct istream_private *stream)
 		return -2;
 
 	if (!zstream->header_read) {
-		if ((ret = i_stream_lz4_read_header(zstream)) <= 0) {
-			stream->istream.eof = TRUE;
-			return ret;
+		while ((ret = i_stream_lz4_read_header(zstream)) == 0) {
+			if (!stream->istream.blocking)
+				return 0;
 		}
+		if (ret < 0)
+			return ret;
 		zstream->header_read = TRUE;
 	}
 
@@ -197,7 +205,8 @@ static ssize_t i_stream_lz4_read(struct istream_private *stream)
 		lz4_read_error(zstream, "corrupted lz4 chunk");
 		stream->istream.stream_errno = EINVAL;
 		return -1;
-	}
+	} else if (ret == 0)
+		return i_stream_lz4_read(stream);
 	i_assert(ret > 0);
 	stream->pos += ret;
 	i_assert(stream->pos <= stream->buffer_size);
@@ -227,7 +236,8 @@ static void i_stream_lz4_reset(struct lz4_istream *zstream)
 static void
 i_stream_lz4_seek(struct istream_private *stream, uoff_t v_offset, bool mark)
 {
-	struct lz4_istream *zstream = (struct lz4_istream *) stream;
+	struct lz4_istream *zstream =
+		container_of(stream, struct lz4_istream, istream);
 
 	if (i_stream_nonseekable_try_seek(stream, v_offset))
 		return;
@@ -243,7 +253,8 @@ i_stream_lz4_seek(struct istream_private *stream, uoff_t v_offset, bool mark)
 
 static void i_stream_lz4_sync(struct istream_private *stream)
 {
-	struct lz4_istream *zstream = (struct lz4_istream *) stream;
+	struct lz4_istream *zstream =
+		container_of(stream, struct lz4_istream, istream);
 	const struct stat *st;
 
 	if (i_stream_stat(stream->parent, FALSE, &st) == 0) {
