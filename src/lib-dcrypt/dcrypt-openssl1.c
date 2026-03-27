@@ -310,7 +310,7 @@ dcrypt_openssl_ctx_sym_create(const char *algorithm, enum dcrypt_sym_mode mode,
 	}
 
 	/* allocate context */
-	pool = pool_alloconly_create("dcrypt openssl", 1024);
+	pool = pool_alloconly_create_clean("dcrypt openssl", 1024);
 	ctx = p_new(pool, struct dcrypt_context_symmetric, 1);
 	ctx->pool = pool;
 	ctx->cipher = cipher;
@@ -607,7 +607,7 @@ dcrypt_openssl_ctx_hmac_create(const char *algorithm,
 	}
 
 	/* allocate context */
-	pool = pool_alloconly_create("dcrypt openssl", 1024);
+	pool = pool_alloconly_create_clean("dcrypt openssl", 1024);
 	ctx = p_new(pool, struct dcrypt_context_hmac, 1);
 	ctx->pool = pool;
 	ctx->md = md;
@@ -3685,7 +3685,7 @@ dcrypt_openssl_digest(const char *algorithm, const void *data, size_t data_len,
 	if ((mdctx = EVP_MD_CTX_create()) == NULL)
 		return dcrypt_openssl_error(error_r);
 	unsigned char *buf = buffer_append_space_unsafe(digest_r, md_size);
-	if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1 ||
+	if (EVP_DigestInit_ex(mdctx, md, NULL) != 1 ||
 	    EVP_DigestUpdate(mdctx, data, data_len) != 1 ||
 	    EVP_DigestFinal_ex(mdctx, buf, &md_size) != 1) {
 		ret = dcrypt_openssl_error(error_r);

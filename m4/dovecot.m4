@@ -6,7 +6,7 @@ dnl This file is free software; the authors give
 dnl unlimited permission to copy and/or distribute it, with or without
 dnl modifications, as long as this notice is preserved.
 
-# serial 48
+# serial 49
 
 dnl
 dnl Check for support for D_FORTIFY_SOURCE=2
@@ -72,7 +72,7 @@ AC_DEFUN([DC_LTO], [
       *)
         gl_COMPILER_OPTION_IF([-flto=auto -ffat-lto-objects], [
           AM_CFLAGS="$AM_CFLAGS -flto=auto -ffat-lto-objects"
-          AM_LDFLAGS="-flto"
+          AM_LDFLAGS="$AM_LDFLAGS -flto"
         ],
         [AC_MSG_ERROR([LTO support requested but not present])],
         [AC_LANG_PROGRAM()])
@@ -676,6 +676,7 @@ AC_DEFUN([DOVECOT_WANT_ASAN], [
      ])
      AS_IF([test "$san_flags" != "" ], [
        AM_CFLAGS="$AM_CFLAGS $san_flags -fno-omit-frame-pointer"
+       AM_LDFLAGS="$AM_LDFLAGS -fsanitize=address"
        AC_DEFINE([HAVE_ADDRESS_SANITIZER], [1], [Define if your compiler supports address sanitizer])
      ], [
        AC_MSG_ERROR([No address sanitizer support in your compiler])
@@ -698,6 +699,7 @@ AC_DEFUN([DOVECOT_WANT_MSAN], [
      ])
      AS_IF([test "$san_flags" != "" ], [
        AM_CFLAGS="$AM_CFLAGS $san_flags -fno-omit-frame-pointer"
+       AM_LDFLAGS="$AM_LDFLAGS -fsanitize=memory"
        AC_DEFINE([HAVE_MEMORY_SANITIZER], [1], [Define if your compiler supports memory sanitizer])
      ], [
        AC_MSG_ERROR([No memory sanitizer support in your compiler])

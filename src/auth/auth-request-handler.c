@@ -682,8 +682,10 @@ int auth_request_handler_auth_begin(struct auth_request_handler *handler,
 	const struct sasl_server_mech *mech;
 
 	if (auth_request_handler_find_mech(handler, request, mech_name,
-					   &mech) < 0)
+					   &mech) < 0) {
+		auth_request_unref(&request);
 		return -1;
+	}
 	auth_request_init_sasl(request, mech);
 
 	request->to_abort = timeout_add(MASTER_AUTH_SERVER_TIMEOUT_SECS * 1000,
@@ -749,6 +751,9 @@ int auth_request_handler_auth_begin(struct auth_request_handler *handler,
 			auth_request_handler_auth_fail_code(handler, request,
 				AUTH_CLIENT_FAIL_CODE_INVALID_BASE64,
 				"Invalid base64 data in initial response");
+			/* The base64 input came from untrusted client. It's
+			   an expected auth failure, so don't disconnect the
+			   auth client. */
 			return 1;
 		}
 		initial_resp_data =
@@ -821,7 +826,10 @@ int auth_request_handler_auth_continue(struct auth_request_handler *handler,
 			auth_request_handler_auth_fail_code(handler, request,
 				AUTH_CLIENT_FAIL_CODE_INVALID_BASE64,
 				"Invalid base64 data in continued response");
-			return -1;
+			/* The base64 input came from untrusted client. It's
+			   an expected auth failure, so don't disconnect the
+			   auth client. */
+			return 1;
 		}
 	}
 
@@ -862,11 +870,16 @@ static void auth_str_append_userdb_extra_fields(struct auth_request *request,
 	/* generate auth_token when master service provided session_pid */
 	if (request->request_auth_token &&
 	    request->session_pid != (pid_t)-1) {
+		const char *auth_token_pid = dec2str(request->session_pid);
 		const char *auth_token =
-			auth_token_get(request->fields.protocol,
-				       dec2str(request->session_pid),
+			auth_token_get(request->fields.protocol, auth_token_pid,
 				       request->fields.user,
 				       request->fields.session_id);
+		e_debug(request->event, "Token requested: service=%s "
+			"username=%s session_pid=%s session_id=%s "
+			"token=%s", request->fields.protocol,
+			request->fields.user, auth_token_pid,
+			request->fields.session_id, auth_token);
 		auth_str_add_keyvalue(dest, "auth_token", auth_token);
 	}
 	if (request->fields.master_user != NULL) {

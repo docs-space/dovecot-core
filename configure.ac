@@ -338,6 +338,9 @@ DC_DOVECOT_HARDENING
 DC_DOVECOT_FUZZER
 DC_DOVECOT_CFLAGS
 
+FUZZER_CFLAGS="$FUZZER_CFLAGS $AM_CFLAGS $BINARY_CFLAGS"
+FUZZER_LDFLAGS="$FUZZER_LDFLAGS $AM_LDFLAGS $BINARY_LDFLAGS"
+
 DOVECOT_NSL
 DOVECOT_LIBCAP
 
@@ -800,6 +803,7 @@ TEST_CFLAGS="-DTEST_DIR=\\\"\\\$(abs_top_builddir)/.test\\\""
 AM_CFLAGS="$AM_CFLAGS $TEST_CFLAGS $EXTRA_CFLAGS"
 AM_CXXFLAGS="$AM_CXXFLAGS $TEST_CFLAGS $EXTRA_CFLAGS"
 AC_SUBST([AM_CFLAGS])
+AC_SUBST([AM_LDFLAGS])
 AC_SUBST([AM_CXXFLAGS])
 BINARY_LDFLAGS="$PIE_LDFLAGS $RELRO_LDFLAGS"
 BINARY_CFLAGS="$PIE_CFLAGS"
@@ -972,7 +976,10 @@ echo "userdbs ........ :$userdb"
 if test "$not_userdb" != ""; then
   echo "                 :$not_userdb"
 fi
-echo "AM_CFLAGS ...... : $AM_CFLAGS"
+echo "CFLAGS ......... : $AM_CFLAGS $CFLAGS $EXTRA_CFLAGS"
+echo "LDFLAGS ........ : $AM_LDFLAGS $LDFLAGS $EXTRA_LDFLAGS"
+echo "BINARY CFLAGS .. : $BINARY_CFLAGS"
+echo "BINARY LDFLAGS . : $BINARY_LDFLAGS"
 
 if test "$systemdsystemunitdir" != ""; then
   echo "SYSTEMD ........ : $systemdservicetype - $systemdsystemunitdir/dovecot.service";

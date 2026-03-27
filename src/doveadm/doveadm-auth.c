@@ -158,8 +158,8 @@ cmd_user_input(struct auth_master_connection *conn,
 
 static void
 auth_callback(struct auth_client_request *request,
-	      enum auth_request_status status, const char *data_base64,
-	      const char *const *args, void *context)
+	      enum auth_request_status status, const char *log_error,
+	      const char *data_base64, const char *const *args, void *context)
 {
 	struct authtest_input *input = context;
 	const unsigned char *sasl_output;
@@ -191,12 +191,13 @@ auth_callback(struct auth_client_request *request,
 			}
 		}
 		if (!input->internal_failure) {
-			printf("passdb: %s auth failed\n", input->username);
+			printf("passdb: %s auth failed: %s\n",
+			       input->username, log_error);
 			break;
 		}
 		/* fall through */
 	case AUTH_REQUEST_STATUS_INTERNAL_FAIL:
-		e_error(input->event, "internal auth failure");
+		e_error(input->event, "internal auth failure: %s", log_error);
 		break;
 	case AUTH_REQUEST_STATUS_CONTINUE:
 		input_len = strlen(data_base64);
@@ -266,7 +267,7 @@ auth_channel_bind_callback(const char *type, void *context,
 }
 
 static void auth_connected(struct auth_client *client,
-			   bool connected, void *context)
+			   const char *connect_error, void *context)
 {
 	struct authtest_input *input = context;
 	const char *mech = dsasl_client_mech_get_name(input->sasl_mech);
@@ -276,10 +277,10 @@ static void auth_connected(struct auth_client *client,
 	string_t *sasl_output_base64;
 	const char *error;
 
-	if (!connected) {
+	if (connect_error != NULL) {
 		if (doveadm_is_killed())
 			return;
-		i_fatal("Couldn't connect to auth socket");
+		i_fatal("Couldn't connect to auth socket: %s", connect_error);
 	}
 	if (auth_client_find_mech(client, mech) == NULL)
 		i_fatal("SASL mechanism '%s' not supported by server", mech);
