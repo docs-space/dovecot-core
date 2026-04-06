@@ -1,9 +1,9 @@
 #!/usr/bin/bash
 
 VERSION=$1
-BUILD_DIRECTORY=/opt/r7-mailserver/mdaserver
+#BUILD_DIRECTORY=/opt/r7-mailserver/mdaserver
 PACK_DIRECTORY=$2/Pack/src/opt/r7-mailserver
-
+BUILD_DIRECTORY=$3
 
 #Пакеты компилятора и зависимости
 sudo apt-get update -y && sudo apt-get install -y apt-utils && sudo apt-get install -y gettext-base gettext openssh-client ca-certificates pkg-config wget git coreutils ed
