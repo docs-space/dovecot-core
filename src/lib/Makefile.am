@@ -62,31 +62,31 @@ YACC=/bin/false
 event-filter-parser.h: event-filter-parser.c
 
 $(UCD_DIR)/CaseFolding.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/CaseFolding.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/CaseFolding.txt
 $(UCD_DIR)/CompositionExclusions.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/CompositionExclusions.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/CompositionExclusions.txt
 $(UCD_DIR)/DerivedCoreProperties.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/DerivedCoreProperties.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/DerivedCoreProperties.txt
 $(UCD_DIR)/DerivedNormalizationProps.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/DerivedNormalizationProps.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/DerivedNormalizationProps.txt
 $(UCD_DIR)/emoji-data.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/emoji-data.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/emoji-data.txt
 $(UCD_DIR)/GraphemeBreakProperty.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/GraphemeBreakProperty.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/GraphemeBreakProperty.txt
 $(UCD_DIR)/GraphemeBreakTest.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/GraphemeBreakTest.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/GraphemeBreakTest.txt
 $(UCD_DIR)/NormalizationTest.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/NormalizationTest.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/NormalizationTest.txt
 $(UCD_DIR)/PropertyValueAliases.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/PropertyValueAliases.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/PropertyValueAliases.txt
 $(UCD_DIR)/PropList.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/PropList.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/PropList.txt
 $(UCD_DIR)/SpecialCasing.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/SpecialCasing.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/SpecialCasing.txt
 $(UCD_DIR)/UnicodeData.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/UnicodeData.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/UnicodeData.txt
 $(UCD_DIR)/WordBreakProperty.txt:
-	$(AM_V_at)test -f $@ || $(WGET) -nv -O $@ $(UCD_URL)/WordBreakProperty.txt
+	$(AM_V_at)test -f $@ || $(WGET) -nv --tries=5 --retry-connrefused -O $@ $(UCD_URL)/WordBreakProperty.txt
 
 $(srcdir)/unicode-data-tables.c $(srcdir)/unicode-data-tables.h \
 	$(srcdir)/unicode-data-types.c $(srcdir)/unicode-data-types.h &: \
