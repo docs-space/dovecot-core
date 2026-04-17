@@ -23,19 +23,19 @@ mkdir -p $BUILD_DIRECTORY
 rm -rf $BUILD_DIRECTORY/*
 
 #Download resources for build
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/CaseFolding.txt https://dovecot.org/res/CaseFolding.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/CompositionExclusions.txt https://dovecot.org/res/CompositionExclusions.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/DerivedCoreProperties.txt https://dovecot.org/res/DerivedCoreProperties.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/DerivedNormalizationProps.txt https://dovecot.org/res/DerivedNormalizationProps.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/emoji-data.txt https://dovecot.org/res/emoji-data.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/GraphemeBreakProperty.txt https://dovecot.org/res/GraphemeBreakProperty.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/GraphemeBreakTest.txt https://dovecot.org/res/GraphemeBreakTest.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/NormalizationTest.txt https://dovecot.org/res/NormalizationTest.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/PropertyValueAliases.txt https://dovecot.org/res/PropertyValueAliases.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/PropList.txt https://dovecot.org/res/PropList.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/SpecialCasing.txt https://dovecot.org/res/SpecialCasing.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/UnicodeData.txt https://dovecot.org/res/UnicodeData.txt
-wget -nv -O $PACK_DIRECTORY/src/lib/ucd/WordBreakProperty.txt https://dovecot.org/res/WordBreakProperty.txt
+wget -nv -O $2/src/lib/ucd/CaseFolding.txt https://dovecot.org/res/CaseFolding.txt
+wget -nv -O $2/src/lib/ucd/CompositionExclusions.txt https://dovecot.org/res/CompositionExclusions.txt
+wget -nv -O $2/src/lib/ucd/DerivedCoreProperties.txt https://dovecot.org/res/DerivedCoreProperties.txt
+wget -nv -O $2/src/lib/ucd/DerivedNormalizationProps.txt https://dovecot.org/res/DerivedNormalizationProps.txt
+wget -nv -O $2/src/lib/ucd/emoji-data.txt https://dovecot.org/res/emoji-data.txt
+wget -nv -O $2/src/lib/ucd/GraphemeBreakProperty.txt https://dovecot.org/res/GraphemeBreakProperty.txt
+wget -nv -O $2/src/lib/ucd/GraphemeBreakTest.txt https://dovecot.org/res/GraphemeBreakTest.txt
+wget -nv -O $2/src/lib/ucd/NormalizationTest.txt https://dovecot.org/res/NormalizationTest.txt
+wget -nv -O $2/src/lib/ucd/PropertyValueAliases.txt https://dovecot.org/res/PropertyValueAliases.txt
+wget -nv -O $2/src/lib/ucd/PropList.txt https://dovecot.org/res/PropList.txt
+wget -nv -O $2/src/lib/ucd/SpecialCasing.txt https://dovecot.org/res/SpecialCasing.txt
+wget -nv -O $2/src/lib/ucd/UnicodeData.txt https://dovecot.org/res/UnicodeData.txt
+wget -nv -O $2/src/lib/ucd/WordBreakProperty.txt https://dovecot.org/res/WordBreakProperty.txt
 
 #Чистка предыдущей установки, если такая была
 make distclean || true
