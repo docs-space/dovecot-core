@@ -36,6 +36,8 @@ wget -nv --tries=5 --waitretry=5 --retry-connrefused -O $2/src/lib/ucd/PropList.
 wget -nv --tries=5 --waitretry=5 --retry-connrefused -O $2/src/lib/ucd/SpecialCasing.txt https://dovecot.org/res/SpecialCasing.txt
 wget -nv --tries=5 --waitretry=5 --retry-connrefused -O $2/src/lib/ucd/UnicodeData.txt https://dovecot.org/res/UnicodeData.txt
 wget -nv --tries=5 --waitretry=5 --retry-connrefused -O $2/src/lib/ucd/WordBreakProperty.txt https://dovecot.org/res/WordBreakProperty.txt
+#Download Docs
+wget -nv --tries=5 --waitretry=5 --retry-connrefused -O $2/doc/core.txz https://doc.dovecot.org/2.4.2/core.txz
 
 #Чистка предыдущей установки, если такая была
 make distclean || true

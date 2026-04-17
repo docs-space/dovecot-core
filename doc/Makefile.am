@@ -18,7 +18,7 @@ am__v_Q_0 = -q
 am__v_Q_1 =
 
 stamp-man:
-	$(AM_V_at)$(WGET) -nv -O- $(MAN_URL) | xz -d | $(am__untar) && \
+	$(AM_V_at)test -f ./core.txz || $(WGET) -nv --tries=5 --waitretry=5 --retry-connrefused -O- $(MAN_URL) | xz -d | $(am__untar) && \
 		touch stamp-man || rm -f stamp-man
 
 all-local: stamp-man
