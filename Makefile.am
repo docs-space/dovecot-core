@@ -56,6 +56,7 @@ dovecot-config: dovecot-config.in Makefile
 	-e "s|^\(dovecot_docdir\)=|\1=$(docdir)|" \
 	-e "s|^\(dovecot_moduledir\)=|\1=$(moduledir)|" \
 	-e "s|^\(dovecot_statedir\)=|\1=$(statedir)|" \
+	-e "s|^\(dovecot_prefix\)=|\1=$(prefix)|" \
 	) > dovecot-config
 
 %.service: %.service.in
