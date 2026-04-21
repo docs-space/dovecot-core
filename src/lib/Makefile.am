@@ -198,7 +198,6 @@ liblib_la_SOURCES = \
 	mmap-anon.c \
 	mmap-util.c \
 	module-dir.c \
-	mountlist.c \
 	mountpoint.c \
 	net.c \
 	nfs-workarounds.c \
@@ -365,7 +364,6 @@ headers = \
 	mmap-util.h \
 	module-context.h \
 	module-dir.h \
-	mountlist.h \
 	mountpoint.h \
 	net.h \
 	nfs-workarounds.h \
