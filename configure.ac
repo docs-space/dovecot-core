@@ -922,7 +922,6 @@ src/stats/Makefile
 src/util/Makefile
 src/plugins/Makefile
 src/plugins/acl/Makefile
-src/plugins/doveapi/Makefile
 src/plugins/imap-acl/Makefile
 src/plugins/fs-compress/Makefile
 src/plugins/fts/Makefile
