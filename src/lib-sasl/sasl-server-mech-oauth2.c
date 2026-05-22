@@ -62,10 +62,12 @@ oauth2_fail(struct oauth2_auth_request *oauth2_req,
 		i_assert(request->mech->def == &mech_oauthbearer);
 		json_ostream_nwrite_string(joutput, "status", failure->status);
 	}
-	if (failure->scope == NULL)
-		json_ostream_nwrite_string(joutput, "scope", "mail");
-	else
+	if (failure->scope != NULL)
 		json_ostream_nwrite_string(joutput, "scope", failure->scope);
+	else if (oauth2_mech->set.scope != NULL)
+		json_ostream_nwrite_string(joutput, "scope", oauth2_mech->set.scope);
+	else
+		json_ostream_nwrite_string(joutput, "scope", "mail");
 	if (oauth2_mech->set.openid_configuration_url != NULL &&
 	    *oauth2_mech->set.openid_configuration_url != '\0') {
 		json_ostream_nwrite_string(
@@ -83,8 +85,13 @@ oauth2_fail(struct oauth2_auth_request *oauth2_req,
 static void
 oauth2_fail_status(struct oauth2_auth_request *oauth2_req, const char *status)
 {
+	/* need to get the configured scopes */
+	const struct oauth2_auth_mech *oauth2_mech =
+		container_of(oauth2_req->request.mech,
+			     const struct oauth2_auth_mech, mech);
 	const struct sasl_server_oauth2_failure failure = {
 		.status = status,
+		.scope = oauth2_mech->set.scope,
 	};
 
 	oauth2_fail(oauth2_req, &failure);
@@ -279,7 +286,7 @@ mech_oauthbearer_auth_continue(struct sasl_server_mech_request *request,
 	in++;
 
 	/* *kvpair */
-	while (*in != 0x01 && in < in_end) {
+	while (in < in_end && *in != 0x01) {
 		const char *key, *value;
 
 		if (sasl_oauth2_kvpair_parse(in, in_end - in, &key, &value,
@@ -484,6 +491,7 @@ mech_oauth2_register(struct sasl_server_instance *sinst,
 	if (set != NULL) {
 		oauth2_mech->set.openid_configuration_url =
 			p_strdup(mech->pool, set->openid_configuration_url);
+		oauth2_mech->set.scope = p_strdup(mech->pool, set->scope);
 	}
 }
 

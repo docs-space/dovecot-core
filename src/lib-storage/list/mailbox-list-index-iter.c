@@ -60,21 +60,10 @@ mailbox_list_index_iter_init(struct mailbox_list *list,
 }
 
 static void
-mailbox_list_get_escaped_mailbox_name(struct mailbox_list *list,
-				      const char *raw_name,
-				      string_t *escaped_name)
-{
-	const char escape_chars[] = {
-		list->mail_set->mailbox_list_storage_escape_char[0],
-		mailbox_list_get_hierarchy_sep(list),
-		'\0'
-	};
-	mailbox_list_name_escape(raw_name, escape_chars, escaped_name);
-}
-
-static void
 mailbox_list_index_update_info(struct mailbox_list_index_iterate_context *ctx)
 {
+	struct mailbox_list_index *ilist =
+		INDEX_LIST_CONTEXT_REQUIRE(ctx->ctx.list);
 	struct mailbox_list_index_node *node = ctx->next_node;
 	struct mailbox *box;
 
@@ -86,7 +75,7 @@ mailbox_list_index_update_info(struct mailbox_list_index_iterate_context *ctx)
 		str_append_c(ctx->path,
 			     mailbox_list_get_hierarchy_sep(ctx->ctx.list));
 	}
-	mailbox_list_get_escaped_mailbox_name(ctx->ctx.list, node->raw_name,
+	mailbox_list_get_escaped_mailbox_name(ctx->ctx.list, node,
 					      ctx->path);
 
 	ctx->info.vname = mailbox_list_get_vname(ctx->ctx.list, str_c(ctx->path));
@@ -107,7 +96,11 @@ mailbox_list_index_update_info(struct mailbox_list_index_iterate_context *ctx)
 		/* listing INBOX/INBOX */
 		ctx->info.vname = p_strconcat(ctx->ctx.info_pool,
 			ctx->ctx.list->ns->prefix, "INBOX", NULL);
-		ctx->info.flags |= MAILBOX_NONEXISTENT;
+		if (node->raw_name != ilist->raw_inbox_inbox_name_ptr) {
+			/* We can't access it without escape character
+			   configured. */
+			ctx->info.flags |= MAILBOX_NONEXISTENT;
+		}
 	}
 	if ((node->flags & MAILBOX_LIST_INDEX_FLAG_NONEXISTENT) != 0)
 		ctx->info.flags |= MAILBOX_NONEXISTENT;
@@ -144,24 +137,22 @@ mailbox_list_index_update_next(struct mailbox_list_index_iterate_context *ctx,
 	} else {
 		while (node->next == NULL) {
 			node = node->parent;
-			if (node != NULL) T_BEGIN {
-				/* The storage name kept in the iteration context
-				   is escaped. To calculate the right truncation
-				   margin, the length of the name must be
-				   calculated from the escaped storage name and
-				   not from node->raw_name. */
-				string_t *escaped_name = t_str_new(64);
-				mailbox_list_get_escaped_mailbox_name(ctx->ctx.list,
-								      node->raw_name,
-								      escaped_name);
-				ctx->parent_len -= str_len(escaped_name);
-				if (node->parent != NULL)
-					ctx->parent_len--;
-			} T_END;
 			if (node == NULL) {
 				/* last one */
 				ctx->next_node = NULL;
 				return;
+			}
+
+			/* update parent_len by dropping the last name
+			   from the hierarchy. */
+			str_truncate(ctx->path, ctx->parent_len);
+			const char *p = strrchr(str_c(ctx->path),
+				mailbox_list_get_hierarchy_sep(ctx->ctx.list));
+			if (p != NULL)
+				ctx->parent_len = p - str_c(ctx->path);
+			else {
+				i_assert(node->parent == NULL);
+				ctx->parent_len = 0;
 			}
 		}
 		ctx->next_node = node->next;

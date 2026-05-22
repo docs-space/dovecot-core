@@ -256,6 +256,7 @@ static void test_var_expand_builtin_filters(void) {
 		{ .in = "%{user | index('@',-1)}", .out = "domain", .ret = 0 },
 		{ .in = "%{user | username(0)}", .out = "username: Too many positional parameters", .ret = -1 },
 		{ .in = "%{user | domain(0)}", .out = "domain: Too many positional parameters", .ret = -1 },
+		{ .in = "%{user | index('',0)}", .out = "Empty separator", .ret = -1 },
 		{ .in = "%{literal('hello@') | domain }", .out = "", .ret = 0 },
 		{ .in = "%{literal('@hello') | username }", .out = "", .ret = 0 },
 		{ .in = "%{literal('@') | domain }", .out = "", .ret = 0 },
@@ -320,8 +321,24 @@ static void test_var_expand_math(void) {
 		{ .in = "%{literal('31') | unhexlify | text * 5}", .out = "5", .ret = 0 },
 		{ .in = "%{literal('31') | unhex * 5}", .out = "245", .ret = 0 },
 		{ .in = "%{port % 5}", .out = "3", .ret = 0 },
-		{ .in = "%{port / 0}", .out = "calculate: Division by zero", .ret = -1 },
-		{ .in = "%{port % 0}", .out = "calculate: Modulo by zero", .ret = -1 },
+		{ .in = "%{port / 0}",
+		  .out = "calculate: Division must be by positive integer",
+		  .ret = -1 },
+		{ .in = "%{port % 0}",
+		  .out = "calculate: Modulo must be by positive integer",
+		  .ret = -1 },
+		{ .in = "%{port / -1}",
+		  .out = "calculate: Division must be by positive integer",
+		  .ret = -1 },
+		{ .in = "%{port % -1}",
+		  .out = "calculate: Modulo must be by positive integer",
+		  .ret = -1 },
+		{ .in = "%{literal('-9223372036854775808') / -1}",
+		  .out = "calculate: Division must be by positive integer",
+		  .ret = -1 },
+		{ .in = "%{literal('-9223372036854775808') % -1}",
+		  .out = "calculate: Modulo must be by positive integer",
+		  .ret = -1 },
 		{ .in = "%{third | sha256 % 0}", .out = "calculate: Binary modulo must be positive integer", .ret = -1 },
 		/* multiple programs, first fails */
 		{ .in = "%{failure} %{port}", .out = "Unknown variable 'failure'", .ret = -1 },
@@ -760,6 +777,7 @@ static void test_var_expand_escape(void)
 		{ .key = "escape", .value = "'hello' \"world\"", },
 		{ .key = "first", .value = "bobby" },
 		{ .key = "nasty", .value = "\';-- SELECT * FROM bobby.tables" },
+		{ .key = "feisty", .value = "' OR '1'='1" },
 		VAR_EXPAND_TABLE_END
 	};
 
@@ -813,7 +831,9 @@ static void test_var_expand_escape(void)
 			.out = "Program size exceeds maximum of 8192 bytes",
 			.ret = -1,
 		},
-
+		/* safe filter */
+		{ .in = "%{feisty}", "'\\' OR \\'1\\'=\\'1'", .ret = 0 },
+		{ .in = "%{clean|safe} and %{feisty}", "hello world and '\\' OR \\'1\\'=\\'1'", .ret = 0 },
 	};
 
 	const struct var_expand_params params = {

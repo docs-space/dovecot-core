@@ -123,8 +123,9 @@ client_get_auth_flags(struct client *client)
 {
         enum auth_request_flags auth_flags = 0;
 
-	if (client->ssl_iostream != NULL &&
-	    ssl_iostream_has_valid_cert(client->ssl_iostream))
+	if ((client->ssl_iostream != NULL &&
+	     ssl_iostream_has_valid_cert(client->ssl_iostream)) ||
+	    client->haproxy_ssl_client_cert)
 		auth_flags |= AUTH_REQUEST_FLAG_VALID_CLIENT_CERT;
 	if (client->connection_tls_secured)
 		auth_flags |= AUTH_REQUEST_FLAG_CONN_SECURED_TLS;
@@ -672,13 +673,13 @@ void sasl_server_auth_failed(struct client *client, const char *reason,
 				SASL_SERVER_REPLY_AUTH_FAILED);
 }
 
-void sasl_server_auth_abort(struct client *client)
+void sasl_server_auth_abort(struct client *client, const char *reason)
 {
 	client->auth_aborted_by_client = TRUE;
 	if (client->anvil_query != NULL) {
 		anvil_client_query_abort(anvil, &client->anvil_query);
 		i_free(client->anvil_request);
 	}
-	sasl_server_auth_cancel(client, "Aborted", NULL,
+	sasl_server_auth_cancel(client, reason, NULL,
 				SASL_SERVER_REPLY_AUTH_ABORTED);
 }

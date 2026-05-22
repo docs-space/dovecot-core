@@ -924,10 +924,10 @@ static void quota_warnings_execute(struct quota_transaction_context *ctx,
 					count_before, count_current,
 					&reason)) {
 			struct event *event = event_create(root->backend.event);
-			event_set_ptr(event, SETTINGS_EVENT_FILTER_NAME,
-				      p_strdup_printf(event_get_pool(event),
-						      "quota_warning/%s",
-						      warn_name));
+			const char *filter_name = p_strdup_printf(
+				event_get_pool(event), "quota_warning/%s",
+				warn_name);
+			settings_event_add_filter_name(event, filter_name);
 			event_set_append_log_prefix(event, t_strdup_printf(
 				"quota_warning %s: ", warn_name));
 			quota_warning_execute(event, NULL, reason);
@@ -1180,7 +1180,33 @@ quota_try_alloc(struct quota_transaction_context *ctx,
 	   quota_alloc() or quota_free_bytes() was already used within the same
 	   transaction, but that doesn't normally happen. */
 	ctx->auto_updating = FALSE;
-	quota_alloc_with_size(ctx, size, expunged_size);
+	/* Do not subtract expunged_size from the persistent counter here:
+	   the expunge is tracked separately via quota_mail_expunge() ->
+	   qbox->expunge_qt (committed independently via sync_notify), so
+	   subtracting it again would double-count. expunged_size is still
+	   passed to quota_test_alloc() above so that moves/replaces at the
+	   quota boundary are correctly permitted. */
+	quota_alloc_with_size(ctx, size, 0);
+
+	/* Record the pending expunge per visible root so that subsequent
+	   quota_try_alloc() calls in the same transaction (e.g. a batch
+	   MOVE/REPLACE of several mails at the quota boundary) see the
+	   accumulated expunged amount in their limit calculations. The
+	   actual quota decrement still happens via qbox->expunge_qt. */
+	if (expunged_mail != NULL && expunged_box != NULL) {
+		struct quota_root *const *roots;
+		unsigned int i, count;
+
+		roots = array_get(&ctx->quota->all_roots, &count);
+		for (i = 0; i < count; i++) {
+			if (!quota_root_is_visible(roots[i], ctx->box) ||
+			    !quota_root_is_visible(roots[i], expunged_box))
+				continue;
+			quota_transaction_root_expunged(&ctx->roots[i], 1,
+							expunged_size);
+		}
+		quota_transaction_update_expunged(ctx);
+	}
 	return QUOTA_ALLOC_RESULT_OK;
 }
 

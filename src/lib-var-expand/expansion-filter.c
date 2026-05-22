@@ -186,15 +186,15 @@ static int fn_calculate(const struct var_expand_statement *stmt,
 		value *= right;
 		break;
 	case VAR_EXPAND_STATEMENT_OPER_SLASH:
-		if (right == 0) {
-			*error_r = "Division by zero";
+		if (right <= 0) {
+			*error_r = "Division must be by positive integer";
 			return -1;
 		}
 		value /= right;
 		break;
 	case VAR_EXPAND_STATEMENT_OPER_MODULO:
-		if (right == 0) {
-			*error_r = "Modulo by zero";
+		if (right <= 0) {
+			*error_r = "Modulo must be by positive integer";
 			return -1;
 		}
 		value %= right;
@@ -904,6 +904,11 @@ static int fn_le_number(const struct var_expand_statement *stmt,
 static int fn_index_common(struct var_expand_state *state, int index,
 			   const char *separator, const char **error_r)
 {
+	if (*separator == '\0') {
+		*error_r = "Empty separator";
+		return -1;
+	}
+
 	const char *p;
 	const char *token;
 	const char *input = str_c(state->transfer);

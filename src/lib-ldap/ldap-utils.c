@@ -57,8 +57,22 @@ int ldap_set_opt_str(LDAP *ld, int opt, const char *value,
 {
 	if (*value != '\0')
 		return ldap_set_opt(ld, opt, value, optname, value, error_r);
-	else
+
+	/* Copy it from global context. This allows getting defaults from
+	   ldap.conf */
+	char *global_value;
+	if (ldap_get_option(NULL, opt, &global_value) != LDAP_SUCCESS)
+		i_unreached();
+	if (global_value == NULL)
 		return 0;
+
+	int ret = 0;
+	if (global_value[0] != '\0') {
+		ret = ldap_set_opt(ld, opt, global_value, optname,
+				   global_value, error_r);
+	}
+	free(global_value);
+	return ret;
 }
 
 #ifndef LDAP_OPT_X_TLS
@@ -85,13 +99,25 @@ int ldap_set_tls_options(LDAP *ld, bool starttls, const char *uris,
 	settings_file_get(ssl_set->ssl_client_ca_file,
 			  unsafe_data_stack_pool, &ca_file);
 
-	if (ldap_set_opt_str(ld, LDAP_OPT_X_TLS_CACERTFILE,
-			     ca_file.path, "ssl_client_ca_file", error_r) < 0)
-		return -1;
-	if (ldap_set_opt_str(ld, LDAP_OPT_X_TLS_CACERTDIR,
-			     ssl_set->ssl_client_ca_dir,
-			     "ssl_client_ca_dir", error_r) < 0)
-		return -1;
+	ldap_init_defaults();
+
+	/* If either ssl_client_ca_file or ssl_client_ca_dir is set,
+	   the defaults for neither is read from ldap.conf. This avoids
+	   confusion of using both settings, which can't be easily even
+	   disabled on Dovecot side. */
+	bool have_ca_settings = ca_file.path[0] != '\0' ||
+		ssl_set->ssl_client_ca_dir[0] != '\0';
+	if (ca_file.path[0] != '\0' || !have_ca_settings) {
+		if (ldap_set_opt_str(ld, LDAP_OPT_X_TLS_CACERTFILE,
+				     ca_file.path, "ssl_client_ca_file", error_r) < 0)
+			return -1;
+	}
+	if (ssl_set->ssl_client_ca_dir[0] != '\0' || !have_ca_settings) {
+		if (ldap_set_opt_str(ld, LDAP_OPT_X_TLS_CACERTDIR,
+				     ssl_set->ssl_client_ca_dir,
+				     "ssl_client_ca_dir", error_r) < 0)
+			return -1;
+	}
 	if (ldap_set_opt_str(ld, LDAP_OPT_X_TLS_CERTFILE, cert_file.path,
 			     "ssl_client_cert_file", error_r) < 0)
 		return -1;
@@ -126,10 +152,8 @@ int ldap_set_tls_options(LDAP *ld, bool starttls, const char *uris,
 			 error_r) < 0)
 		return -1;
 
-#ifdef LDAP_OPT_X_TLS_NEWCTX
 	opt = 0;
 	ldap_set_option(ld, LDAP_OPT_X_TLS_NEWCTX, &opt);
-#endif
 
 	return 0;
 }
@@ -154,4 +178,17 @@ int ldap_set_tls_validate(const struct ssl_settings *set, const char **error_r)
 	       ldap_set_tls_validate_file(set->ssl_client_key_file,
 					  "ssl_client_key_file", error_r) < 0 ?
 		-1 : 0;
+}
+
+void ldap_init_defaults(void)
+{
+	static bool ldap_global_initialized = FALSE;
+	if (!ldap_global_initialized) {
+		/* Enforce reading the global ldap.conf file. It is
+		   done only when ld parameter is NULL. We'll override the
+		   global version for connections. */
+		int version = LDAP_VERSION3;
+		(void)ldap_set_option(NULL, LDAP_OPT_PROTOCOL_VERSION, &version);
+		ldap_global_initialized = TRUE;
+	}
 }

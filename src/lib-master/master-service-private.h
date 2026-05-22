@@ -48,7 +48,10 @@ struct master_service {
 	unsigned int socket_count;
 
 	struct io *io_status_write, *io_status_error;
+	/* Number of requests left before process is stopped. */
 	unsigned int restart_request_count_left;
+	/* Starts as service's client_limit, but never more than
+	   restart_request_count_left. */
 	unsigned int total_available_count;
 	unsigned int process_limit;
 	unsigned int process_min_avail;
@@ -101,6 +104,7 @@ struct master_service {
 	bool call_avail_overflow:1;
 	bool config_path_changed_with_param:1;
 	bool have_admin_sockets:1;
+	bool reuse_port:1;
 	bool want_ssl_server:1;
 	bool config_path_from_master:1;
 	bool log_initialized:1;

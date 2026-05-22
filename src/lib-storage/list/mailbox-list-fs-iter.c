@@ -146,6 +146,7 @@ static int
 dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 	      struct list_dir_context *dir, const struct dirent *d)
 {
+	const char *fname = d->d_name;
 	const char *storage_name, *vname, *root_dir;
 	struct list_dir_entry *entry;
 	enum imap_match_result match;
@@ -153,12 +154,12 @@ dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 	int ret;
 
 	/* skip . and .. */
-	if (d->d_name[0] == '.' &&
-	    (d->d_name[1] == '\0' ||
-	     (d->d_name[1] == '.' && d->d_name[2] == '\0')))
+	if (fname[0] == '.' &&
+	    (fname[1] == '\0' ||
+	     (fname[1] == '.' && fname[2] == '\0')))
 		return 0;
 
-	if (strcmp(d->d_name, ctx->ctx.list->mail_set->mailbox_directory_name) == 0) {
+	if (strcmp(fname, ctx->ctx.list->mail_set->mailbox_directory_name) == 0) {
 		/* mail storage's internal directory (e.g. dbox-Mails).
 		   this also means that the parent is selectable */
 		dir->info_flags &= ENUM_NEGATE(MAILBOX_NOSELECT);
@@ -166,7 +167,7 @@ dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 		return 0;
 	}
 	if (ctx->ctx.list->mail_set->mailbox_subscriptions_filename[0] != '\0' &&
-	    strcmp(d->d_name, ctx->ctx.list->mail_set->mailbox_subscriptions_filename) == 0) {
+	    strcmp(fname, ctx->ctx.list->mail_set->mailbox_subscriptions_filename) == 0) {
 		/* if this is the subscriptions file, skip it */
 		root_dir = mailbox_list_get_root_forced(ctx->ctx.list,
 							MAILBOX_LIST_PATH_TYPE_DIR);
@@ -175,7 +176,7 @@ dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 	}
 
 	/* check the pattern */
-	storage_name = dir_get_storage_name(dir, d->d_name);
+	storage_name = dir_get_storage_name(dir, fname);
 	vname = mailbox_list_get_vname(ctx->ctx.list, storage_name);
 	if (!uni_utf8_str_is_valid(vname)) {
 		fs_list_rename_invalid(ctx, storage_name);
@@ -185,7 +186,7 @@ dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 	}
 
 	match = imap_match(ctx->ctx.glob, vname);
-	if (strcmp(d->d_name, "INBOX") == 0 && strcmp(vname, "INBOX") == 0 &&
+	if (strcmp(fname, "INBOX") == 0 && strcmp(vname, "INBOX") == 0 &&
 	    ctx->ctx.list->ns->prefix_len > 0) {
 		/* The glob was matched only against "INBOX", but this
 		   directory may hold also prefix/INBOX. Just assume here
@@ -211,7 +212,7 @@ dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 			return ret < 0 ? -1 : 0;
 	}
 	ret = ctx->ctx.list->v.
-		get_mailbox_flags(ctx->ctx.list, dir_path, d->d_name,
+		get_mailbox_flags(ctx->ctx.list, dir_path, fname,
 				  mailbox_list_get_file_type(d), &info_flags);
 	if (ret <= 0)
 		return ret;
@@ -234,9 +235,44 @@ dir_entry_get(struct fs_list_iterate_context *ctx, const char *dir_path,
 		return 0;
 	}
 
+	/* If unescape(fname) -> vname does not re-escape back to fname, this
+	   entry was written using a legacy escape format (e.g. an older
+	   version that escaped leading '~' on every hierarchy part). Rename
+	   it in place so future lookups find it under the current rules.
+	   The migration is deferred until after all uses of the dirent
+	   (alias-symlink lstat, get_mailbox_flags) so the on-disk path
+	   remained valid for those operations. fs_list_entry() recurses
+	   into entry->fname, so storing the post-migration name here makes
+	   the iteration walk the new path and any nested legacy components
+	   hit the same logic on the next level. */
+	if (ctx->ctx.list->mail_set->mailbox_list_storage_escape_char[0] != '\0') {
+		const char *expected_storage_name =
+			mailbox_list_get_storage_name(ctx->ctx.list, vname);
+		const char list_sep =
+			mailbox_list_get_hierarchy_sep(ctx->ctx.list);
+		const char *p = strrchr(expected_storage_name, list_sep);
+		const char *expected_fname =
+			p == NULL ? expected_storage_name : p + 1;
+		const char *suffix;
+		/* A prefix sanity check to prevent a wrong rename when the
+		   re-escape diverges higher up the hierarchy than the current
+		   entry, e.g. for the INBOX/INBOX special case. */
+		bool prefix_ok = dir->storage_name[0] == '\0' ||
+			(str_begins(expected_storage_name, dir->storage_name,
+				    &suffix) &&
+			 suffix[0] == list_sep);
+		if (prefix_ok) {
+			if (mailbox_list_try_migrate_legacy_escape(
+					ctx->ctx.list, dir_path, fname,
+					expected_fname) < 0)
+				return -1;
+			fname = expected_fname;
+		}
+	}
+
 	/* entry matched a pattern. we're going to return this. */
 	entry = array_append_space(&dir->entries);
-	entry->fname = p_strdup(dir->pool, d->d_name);
+	entry->fname = p_strdup(dir->pool, fname);
 	entry->info_flags = info_flags;
 	return 0;
 }
@@ -268,10 +304,10 @@ fs_list_get_storage_path(struct fs_list_iterate_context *ctx,
 		if (!mailbox_list_get_root_path(ctx->ctx.list, type, &root))
 			return FALSE;
 		if (iter_from_index_dir &&
-		    set->parsed_mailbox_root_directory_prefix[0] != '\0') {
-			/* append "mailboxes/" to the index root */
+		    set->mailbox_root_directory_name[0] != '\0') {
+			/* append "mailboxes" to the index root */
 			root = t_strconcat(root, "/",
-				set->parsed_mailbox_root_directory_prefix, NULL);
+				set->mailbox_root_directory_name, NULL);
 		}
 		path = *path == '\0' ? root :
 			t_strconcat(root, "/", path, NULL);

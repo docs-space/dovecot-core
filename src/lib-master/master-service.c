@@ -570,6 +570,7 @@ master_service_init(const char *name, enum master_service_flags flags,
 	} else {
 		service->version_string = PACKAGE_VERSION;
 	}
+	service->reuse_port = getenv(MASTER_REUSE_PORT_ENV) != NULL;
 
 	/* Load the SSL module if we already know it is necessary. It can also
 	   get loaded later on-demand. */
@@ -1455,8 +1456,9 @@ static bool master_service_want_listener(struct master_service *service)
 		/* more concurrent clients can still be added */
 		return TRUE;
 	}
-	if (service->restart_request_count_left == 1) {
-		/* after handling this client, the whole process will stop. */
+	if (service->restart_request_count_left == service->total_available_count) {
+		/* after handling the existing clients,
+		   the whole process will stop. */
 		return FALSE;
 	}
 	if (service->avail_overflow_callback != NULL) {
@@ -1484,7 +1486,7 @@ void master_service_client_connection_handled(struct master_service *service,
 	if (!master_service_want_listener(service)) {
 		i_assert(service->listeners != NULL);
 		master_service_io_listeners_remove(service);
-		if (service->restart_request_count_left == 1 &&
+		if (service->restart_request_count_left == service->total_available_count &&
 		   service->avail_overflow_callback == NULL) {
 			/* we're not going to accept any more connections after
 			   this. go ahead and close the connection early. don't
@@ -1519,13 +1521,12 @@ void master_service_client_connection_accept(struct master_service_connection *c
 
 void master_service_client_connection_destroyed(struct master_service *service)
 {
-	/* we can listen again */
-	master_service_io_listeners_add(service);
-
 	i_assert(service->total_available_count > 0);
 	i_assert(service->restart_request_count_left > 0);
 
 	if (service->restart_request_count_left == service->total_available_count) {
+		/* There may or may not be available clients, but we no longer
+		   increse them. */
 		service->total_available_count--;
 		service->restart_request_count_left--;
 	} else {
@@ -1535,6 +1536,14 @@ void master_service_client_connection_destroyed(struct master_service *service)
 		i_assert(service->master_status.available_count <
 			 service->total_available_count);
 		service->master_status.available_count++;
+	}
+
+	if (service->master_status.available_count > 0) {
+		/* we can listen again */
+		master_service_io_listeners_add(service);
+	} else {
+		/* restart_request_count reached. */
+		master_service_io_listeners_remove(service);
 	}
 
 	if (service->restart_request_count_left == 0) {
@@ -1790,16 +1799,30 @@ static bool master_service_full(struct master_service *service)
 	struct timeval created;
 
 	/* This process can't handle any more connections. */
-	if (!service->call_avail_overflow ||
-	    service->avail_overflow_callback == NULL)
+	if (service->avail_overflow_callback == NULL)
 		return TRUE;
+	if (!service->call_avail_overflow && !service->reuse_port) {
+		/* This process is full, but sibling processes aren't. Another
+		   process will pick up this connection. Note that with
+		   reuse_port=yes the connection is specifically assigned to
+		   this process, so we are responsible for accepting or
+		   rejecting it. */
+		return TRUE;
+	}
 
-	/* Master has notified us that all processes are full, and
-	   we have the ability to kill old connections. */
+	/* Master has notified us that all processes are full (or with
+	   reuse_port=yes this process is full), and we have the ability to
+	   kill old connections. */
 	if (service->total_available_count > 1) {
 		/* This process can still create multiple concurrent
 		   clients if we just kill some of the existing ones.
 		   Do it immediately. */
+		if (service->restart_request_count_left == service->total_available_count) {
+			/* restart_request_count is reached - killing existing
+			   processes won't increase the number of available
+			   clients anymore. */
+			return TRUE;
+		}
 		return !service->avail_overflow_callback(TRUE, &created);
 	}
 
@@ -1881,6 +1904,15 @@ static void master_service_listen(struct master_service_listener *l)
 
 	if (service->master_status.available_count == 0 && !master_admin_conn) {
 		if (master_service_full(service)) {
+			if (service->reuse_port) {
+				/* With reuse_port the master can't drop
+				   the connections for us. We must do it
+				   ourselves. */
+				int fd = net_accept(l->fd, NULL, NULL);
+				if (fd != -1)
+					i_close_fd(&fd);
+				return;
+			}
 			/* Stop the listener until a client has disconnected or
 			   overflow callback has killed one. */
 			master_service_io_listeners_remove(service);
@@ -1990,18 +2022,23 @@ static bool master_status_update_is_important(struct master_service *service)
 static void
 master_status_send(struct master_service *service, bool important_update)
 {
+	struct master_status status = service->master_status;
 	ssize_t ret;
+
+	if (status.available_count == 0 &&
+	    service->restart_request_count_left == service->total_available_count) {
+		/* restart_request_count limit reached */
+		status.available_count = UINT_MAX;
+	}
 
 	timeout_remove(&service->to_status);
 
-	ret = write(MASTER_STATUS_FD, &service->master_status,
-		    sizeof(service->master_status));
-	if (ret == (ssize_t)sizeof(service->master_status)) {
+	ret = write(MASTER_STATUS_FD, &status, sizeof(status));
+	if (ret == (ssize_t)sizeof(status)) {
 		/* success */
 		io_remove(&service->io_status_write);
 		service->last_sent_status_time = ioloop_time;
-		service->last_sent_status_avail_count =
-			service->master_status.available_count;
+		service->last_sent_status_avail_count = status.available_count;
 		service->initial_status_sent = TRUE;
 	} else if (ret >= 0) {
 		/* shouldn't happen? */

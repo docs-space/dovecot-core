@@ -441,7 +441,8 @@ struct client *client_create(int fd_in, int fd_out,
 void client_create_finish(struct client *client)
 {
 	if (client->set->rawlog_dir[0] != '\0') {
-		(void)iostream_rawlog_create(client->set->rawlog_dir,
+		(void)iostream_rawlog_create(client->event, "rawlog_dir",
+					     client->set->rawlog_dir,
 					     &client->input, &client->output);
 	}
 	client->io = io_add_istream(client->input, client_input, client);
@@ -506,7 +507,7 @@ static const char *client_build_uidl_change_string(struct client *client)
 		old_hash ^= crc32_str(client->message_uidls[i]);
 
 	/* assume all except deleted messages were sent to POP3 client */
-	if (!client->deleted) {
+	if (client->deleted_bitmask == NULL) {
 		for (i = 0, new_hash = 0; i < client->messages_count; i++)
 			new_hash ^= crc32_str(client->message_uidls[i]);
 	} else {

@@ -165,7 +165,8 @@ void client_rawlog_init(struct client *client)
 
 	client->pre_rawlog_input = client->input;
 	client->pre_rawlog_output = client->output;
-	if (iostream_rawlog_create(login_rawlog_dir, &client->input,
+	if (iostream_rawlog_create(client->event, "login rawlog",
+				   login_rawlog_dir, &client->input,
 				   &client->output) < 0) {
 		login_rawlog_dir = NULL;
 		return;
@@ -337,6 +338,7 @@ int client_alloc(int fd, const struct master_service_connection *conn,
 		   TLS secured anyway. */
 		client->connection_tls_secured = conn->haproxy.ssl;
 		client->haproxy_terminated_tls = conn->haproxy.ssl;
+		client->haproxy_ssl_client_cert = conn->haproxy.ssl_client_cert;
 		/* Start by assuming this is the end client connection.
 		   Later on this can be overwritten. */
 		client->end_client_tls_secured = conn->haproxy.ssl;
@@ -527,7 +529,8 @@ void client_destroy(struct client *client, const char *reason)
 	} else if (client->auth_request != NULL ||
 		   client->anvil_query != NULL) {
 		i_assert(client->authenticating);
-		sasl_server_auth_abort(client);
+		sasl_server_auth_abort(client,
+				       reason != NULL ? reason : "Aborted");
 	}
 	i_assert(!client->authenticating);
 	i_assert(client->auth_request == NULL);
@@ -536,7 +539,8 @@ void client_destroy(struct client *client, const char *reason)
 	if (client->reauth_request != NULL) {
 		struct auth_client_request *reauth_request =
 			client->reauth_request;
-		auth_client_request_abort(&reauth_request, "Aborted");
+		auth_client_request_abort(&reauth_request,
+					  reason != NULL ? reason : "Aborted");
 		/* callback sets this to NULL */
 		i_assert(client->reauth_request == NULL);
 	}
@@ -659,23 +663,25 @@ void client_common_default_free(struct client *client ATTR_UNUSED)
 
 bool client_destroy_oldest(bool kill, struct timeval *created_r)
 {
-	struct client *client;
-
-	if (last_client == NULL) {
-		/* we have no clients */
-		return FALSE;
-	}
+	struct client *client, *last_refcount_non1 = NULL;
 
 	/* destroy the last client that hasn't successfully authenticated yet.
 	   this is usually the last client, but don't kill it if it's just
 	   waiting for master to finish its job. Also prefer to kill clients
 	   that can immediately be killed (i.e. refcount=1) */
 	for (client = last_client; client != NULL; client = client->prev) {
-		if (client->master_tag == 0 && client->refcount == 1)
+		if (client->master_tag != 0) {
+			/* never kill clients that are just waiting */
+		} else if (client->refcount > 1)
+			last_refcount_non1 = client;
+		else
 			break;
 	}
-	if (client == NULL)
-		client = last_client;
+	if (client == NULL) {
+		client = last_refcount_non1;
+		if (client == NULL)
+			return FALSE;
+	}
 
 	*created_r = client->created;
 	if (!kill)
@@ -1537,9 +1543,10 @@ bool client_get_extra_disconnect_reason(struct client *client,
 			last_reason = "temporary authentication failure";
 			break;
 		case LOGIN_PROXY_FAILURE_TYPE_AUTH_REDIRECT:
-			event_reason = "redirected";
-			last_reason = "redirected";
-			break;
+			/* Redirects fire proxy_session_finished directly with
+			   error_code=proxy_dest_redirected, so this is
+			   unreachable. */
+			i_unreached();
 		case LOGIN_PROXY_FAILURE_TYPE_AUTH_LIMIT_REACHED_REPLIED:
 			event_reason = "connection_limit";
 			last_reason = "connection limit reached";

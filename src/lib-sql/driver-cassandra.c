@@ -24,6 +24,7 @@
 #include <cassandra.h>
 /* </settings checks> */
 #include <pthread.h>
+#include <openssl/crypto.h>
 
 #define IS_CONNECTED(db) \
 	((db)->api.state != SQL_DB_STATE_DISCONNECTED && \
@@ -1002,7 +1003,7 @@ driver_cassandra_db_cache_find(const struct cassandra_settings *set,
 				   set, db->set, NULL) &&
 		    (strcmp(set->ssl, "no") == 0 ||
 		     settings_equal(&ssl_setting_parser_info,
-				    ssl_set, db->set, NULL)))
+				    ssl_set, db->ssl_set, NULL)))
 			return db;
 	}
 	return NULL;
@@ -1242,7 +1243,8 @@ static void driver_cassandra_log_result(struct cassandra_result *result,
 static void driver_cassandra_result_free(struct sql_result *_result)
 {
 	struct cassandra_db *db = container_of(_result->db,struct cassandra_db, api);
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 	long long reply_usecs;
 
 	i_assert(!result->api.callback);
@@ -1911,7 +1913,8 @@ static int driver_cassandra_result_next_page(struct cassandra_result *result)
 
 static int driver_cassandra_result_next_row(struct sql_result *_result)
 {
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 	const CassRow *row;
 	const CassValue *value;
 	const char *str;
@@ -1950,7 +1953,7 @@ driver_cassandra_result_more(struct sql_result **_result, bool async,
 	struct cassandra_db *db = container_of((*_result)->db, struct cassandra_db, api);
 	struct cassandra_result *new_result;
 	struct cassandra_result *old_result =
-		(struct cassandra_result *)*_result;
+		container_of(*_result, struct cassandra_result, api);
 
 	i_assert(old_result->statement != NULL);
 
@@ -1998,30 +2001,50 @@ driver_cassandra_result_more(struct sql_result **_result, bool async,
 static unsigned int
 driver_cassandra_result_get_fields_count(struct sql_result *_result)
 {
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 
 	return array_count(&result->fields);
 }
 
 static const char *
-driver_cassandra_result_get_field_name(struct sql_result *_result ATTR_UNUSED,
-				       unsigned int idx ATTR_UNUSED)
+driver_cassandra_result_get_field_name(struct sql_result *_result,
+				       unsigned int idx)
 {
-	i_unreached();
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
+	const char *name;
+	size_t name_len;
+	int rc = cass_result_column_name(result->result, idx, &name, &name_len);
+	if (rc != CASS_OK) {
+		i_panic("cass_result_column_name() unexpectedly failed: %s",
+			cass_error_desc(rc));
+	}
+	return name;
 }
 
 static int
-driver_cassandra_result_find_field(struct sql_result *_result ATTR_UNUSED,
-				   const char *field_name ATTR_UNUSED)
+driver_cassandra_result_find_field(struct sql_result *_result,
+				   const char *field_name)
 {
-	i_unreached();
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
+
+	for (unsigned int i = 0; i < array_count(&result->fields); i++) {
+		const char *idx_name =
+			driver_cassandra_result_get_field_name(_result, i);
+		if (strcmp(idx_name, field_name) == 0)
+			return i;
+	}
+	return -1;
 }
 
 static const char *
 driver_cassandra_result_get_field_value(struct sql_result *_result,
 					unsigned int idx)
 {
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 
 	return array_idx_elem(&result->fields, idx);
 }
@@ -2031,7 +2054,8 @@ driver_cassandra_result_get_field_value_binary(struct sql_result *_result ATTR_U
 					       unsigned int idx ATTR_UNUSED,
 					       size_t *size_r ATTR_UNUSED)
 {
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 	const char *str;
 	const size_t *sizep;
 
@@ -2051,14 +2075,16 @@ driver_cassandra_result_find_field_value(struct sql_result *result ATTR_UNUSED,
 static const char *const *
 driver_cassandra_result_get_values(struct sql_result *_result)
 {
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 
 	return array_front(&result->fields);
 }
 
 static const char *driver_cassandra_result_get_error(struct sql_result *_result)
 {
-	struct cassandra_result *result = (struct cassandra_result *)_result;
+	struct cassandra_result *result =
+		container_of(_result, struct cassandra_result, api);
 
 	if (result->error != NULL)
 		return result->error;
@@ -2251,7 +2277,7 @@ driver_cassandra_transaction_commit(struct sql_transaction_context *_ctx,
 				    sql_commit_callback_t *callback, void *context)
 {
 	struct cassandra_transaction_context *ctx =
-		(struct cassandra_transaction_context *)_ctx;
+		container_of(_ctx, struct cassandra_transaction_context, ctx);
 	struct sql_commit_result result;
 
 	i_zero(&result);
@@ -2307,7 +2333,7 @@ driver_cassandra_transaction_commit_s(struct sql_transaction_context *_ctx,
 				      const char **error_r)
 {
 	struct cassandra_transaction_context *ctx =
-		(struct cassandra_transaction_context *)_ctx;
+		container_of(_ctx, struct cassandra_transaction_context, ctx);
 
 	if (array_count(&ctx->statements) > 0 && !ctx->failed)
 		driver_cassandra_try_commit_s(ctx);
@@ -2323,7 +2349,7 @@ static void
 driver_cassandra_transaction_rollback(struct sql_transaction_context *_ctx)
 {
 	struct cassandra_transaction_context *ctx =
-		(struct cassandra_transaction_context *)_ctx;
+		container_of(_ctx, struct cassandra_transaction_context, ctx);
 
 	i_assert(ctx->refcount == 1);
 	driver_cassandra_transaction_unref(&ctx);
@@ -2355,7 +2381,7 @@ driver_cassandra_update(struct sql_transaction_context *_ctx, const char *query,
 			unsigned int *affected_rows)
 {
 	struct cassandra_transaction_context *ctx =
-		(struct cassandra_transaction_context *)_ctx;
+		container_of(_ctx, struct cassandra_transaction_context, ctx);
 
 	i_assert(affected_rows == NULL);
 
@@ -2589,7 +2615,7 @@ static void
 driver_cassandra_prepared_statement_deinit(struct sql_prepared_statement *_prep_stmt)
 {
 	struct cassandra_sql_prepared_statement *prep_stmt =
-		(struct cassandra_sql_prepared_statement *)_prep_stmt;
+		container_of(_prep_stmt, struct cassandra_sql_prepared_statement, prep_stmt);
 
 	i_assert(array_count(&prep_stmt->pending_statements) == 0);
 	if (prep_stmt->prepared != NULL)
@@ -2615,7 +2641,7 @@ static struct sql_statement *
 driver_cassandra_statement_init_prepared(struct sql_prepared_statement *_prep_stmt)
 {
 	struct cassandra_sql_prepared_statement *prep_stmt =
-		(struct cassandra_sql_prepared_statement *)_prep_stmt;
+		container_of(_prep_stmt, struct cassandra_sql_prepared_statement, prep_stmt);
 	pool_t pool = pool_alloconly_create("cassandra prepared sql statement", 1024);
 	struct cassandra_sql_statement *stmt =
 		p_new(pool, struct cassandra_sql_statement, 1);
@@ -2641,7 +2667,7 @@ static void
 driver_cassandra_statement_abort(struct sql_statement *_stmt)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 
 	if (stmt->cass_stmt != NULL)
 		cass_statement_free(stmt->cass_stmt);
@@ -2652,7 +2678,7 @@ driver_cassandra_statement_set_timestamp(struct sql_statement *_stmt,
 					 const struct timespec *ts)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 	cass_int64_t ts_usecs =
 		(cass_int64_t)ts->tv_sec * 1000000ULL +
 		ts->tv_nsec / 1000;
@@ -2685,7 +2711,7 @@ driver_cassandra_statement_bind_str(struct sql_statement *_stmt,
 				    const char *value)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 	if (stmt->cass_stmt != NULL)
 		cass_statement_bind_string(stmt->cass_stmt, column_idx, value);
 	else if (stmt->prep != NULL) {
@@ -2702,7 +2728,7 @@ driver_cassandra_statement_bind_binary(struct sql_statement *_stmt,
 				       const void *value, size_t value_size)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 
 	if (stmt->cass_stmt != NULL) {
 		cass_statement_bind_bytes(stmt->cass_stmt, column_idx,
@@ -2722,7 +2748,7 @@ driver_cassandra_statement_bind_int64(struct sql_statement *_stmt,
 				      unsigned int column_idx, int64_t value)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 
 	if (stmt->cass_stmt != NULL)
 		driver_cassandra_bind_int(stmt, column_idx, value);
@@ -2739,7 +2765,7 @@ driver_cassandra_statement_bind_double(struct sql_statement *_stmt,
 				       unsigned int column_idx, double value)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 
 	if (stmt->cass_stmt != NULL)
 		cass_statement_bind_double(stmt->cass_stmt, column_idx, value);
@@ -2777,7 +2803,7 @@ driver_cassandra_statement_query(struct sql_statement *_stmt,
 				 sql_query_callback_t *callback, void *context)
 {
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 	struct cassandra_db *db = container_of(_stmt->db, struct cassandra_db, api);
 	enum cassandra_result_type result_type =
 		stmt->cass_stmt != NULL || stmt->prep != NULL ?
@@ -2821,9 +2847,9 @@ driver_cassandra_update_stmt(struct sql_transaction_context *_ctx,
 			     unsigned int *affected_rows)
 {
 	struct cassandra_transaction_context *ctx =
-		(struct cassandra_transaction_context *)_ctx;
+		container_of(_ctx, struct cassandra_transaction_context, ctx);
 	struct cassandra_sql_statement *stmt =
-		(struct cassandra_sql_statement *)_stmt;
+		container_of(_stmt, struct cassandra_sql_statement, stmt);
 
 	i_assert(affected_rows == NULL);
 
@@ -2924,6 +2950,16 @@ const char *driver_cassandra_version = DOVECOT_ABI_VERSION;
 
 void driver_cassandra_init(void)
 {
+	/* Suppress libcrypto's own atexit handler.  libcassandra initializes
+	   libcrypto lazily on first SSL use; if that init happens before
+	   anyone else passes OPENSSL_INIT_NO_ATEXIT, libcrypto registers
+	   atexit(OPENSSL_cleanup).  That handler runs after main() returns,
+	   which is after Dovecot has dlclose()d libdriver_cassandra.so and
+	   its libcassandra dependency.  OPENSSL_cleanup() then walks
+	   per-thread OpenSSL state holding method pointers into unmapped
+	   libcassandra/libuv code, crashing the process at exit. */
+	OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT, NULL);
+
 	i_array_init(&cassandra_db_cache, 4);
 	sql_driver_register(&driver_cassandra_db);
 }

@@ -56,6 +56,9 @@ static int
 auth_scram_server_credentials_lookup(struct auth_scram_server *server)
 {
 	const struct hash_method *hmethod = server->set.hash_method;
+
+	i_assert(hmethod != NULL);
+
 	struct auth_scram_key_data *kdata = &server->key_data;
 	pool_t pool = server->pool;
 
@@ -238,6 +241,9 @@ static string_t *
 auth_scram_get_server_first(struct auth_scram_server *server)
 {
 	const struct hash_method *hmethod = server->set.hash_method;
+
+	i_assert(hmethod != NULL);
+
 	struct auth_scram_key_data *kdata = &server->key_data;
 	unsigned char snonce[SCRAM_SERVER_NONCE_LEN+1];
 	string_t *str;
@@ -287,6 +293,9 @@ static bool
 auth_scram_server_verify_credentials(struct auth_scram_server *server)
 {
 	const struct hash_method *hmethod = server->set.hash_method;
+
+	i_assert(hmethod != NULL);
+
 	struct auth_scram_key_data *kdata = &server->key_data;
 	struct hmac_context ctx;
 	const char *auth_message;
@@ -336,6 +345,9 @@ auth_scram_parse_client_final(struct auth_scram_server *server,
 			      const char **error_r)
 {
 	const struct hash_method *hmethod = server->set.hash_method;
+
+	i_assert(hmethod != NULL);
+
 	const char **fields, *nonce_str;
 	const void *cbind_input;
 	size_t cbind_input_size;
@@ -410,7 +422,13 @@ auth_scram_parse_client_final(struct auth_scram_server *server,
 	/* proof           = "p=" base64
 	 */
 	if (fields[field_count-1][0] == 'p') {
-		size_t len = strlen(&fields[field_count-1][2]);
+		size_t len = strlen(fields[field_count - 1]);
+
+		if (len < 3 || fields[field_count-1][1] != '=') {
+			*error_r = "Invalid ClientProof";
+			return -1;
+		}
+		len -= 2;
 
 		server->proof = buffer_create_dynamic(server->pool,
 					MAX_BASE64_DECODED_SIZE(len));
@@ -439,6 +457,9 @@ static string_t *
 auth_scram_get_server_final(struct auth_scram_server *server)
 {
 	const struct hash_method *hmethod = server->set.hash_method;
+
+	i_assert(hmethod != NULL);
+
 	struct auth_scram_key_data *kdata = &server->key_data;
 	struct hmac_context ctx;
 	const char *auth_message;
@@ -504,7 +525,7 @@ auth_scram_server_input_client_first(struct auth_scram_server *server,
 	int ret;
 
 	username = login_username = NULL;
-	
+
 	/* Parse client-first message */
 	ret = auth_scram_parse_client_first(server, input, input_len,
 					    &username, &login_username,
@@ -527,7 +548,7 @@ auth_scram_server_input_client_first(struct auth_scram_server *server,
 		*error_code_r = AUTH_SCRAM_SERVER_ERROR_BAD_LOGIN_USERNAME;
 		return -1;
 	}
-	
+
 	return 0;
 }
 
@@ -539,7 +560,7 @@ auth_scram_server_input_client_final(struct auth_scram_server *server,
 				     const char **error_r)
 {
 	int ret;
-	
+
 	/* Parse client-final message */
 	ret = auth_scram_parse_client_final(server, input, input_len, error_r);
 	if (ret < 0) {

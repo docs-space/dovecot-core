@@ -247,8 +247,6 @@ smtp_server_command_new(struct smtp_server_connection *conn, const char *name);
 void smtp_server_command_execute(struct smtp_server_command *cmd,
 				 const char *params);
 
-void smtp_server_command_ref(struct smtp_server_command *cmd);
-bool smtp_server_command_unref(struct smtp_server_command **_cmd);
 void smtp_server_command_abort(struct smtp_server_command **_cmd);
 
 bool smtp_server_command_call_hooks(struct smtp_server_command **_cmd,
@@ -347,6 +345,8 @@ void smtp_server_recipient_ref(struct smtp_server_recipient *rcpt);
 bool smtp_server_recipient_unref(struct smtp_server_recipient **_rcpt);
 void smtp_server_recipient_destroy(struct smtp_server_recipient **_rcpt);
 
+void smtp_server_recipient_replied(struct smtp_server_recipient *rcpt,
+				   const struct smtp_server_reply *reply);
 bool smtp_server_recipient_approved(struct smtp_server_recipient **_rcpt);
 void smtp_server_recipient_denied(struct smtp_server_recipient *rcpt,
 				  const struct smtp_server_reply *reply);

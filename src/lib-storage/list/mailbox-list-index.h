@@ -62,6 +62,15 @@ struct mailbox_list_index_header {
 	/* array of { uint32_t id; char name[]; } */
 };
 
+struct mailbox_list_index_header2 {
+	/* ID number in mailbox_list_index_header which should be considered
+	   as the <prefix>/INBOX mailbox, which would be escaped as
+	   <escape char>49NBOX to differentiate it from the actual INBOX.
+	   The name in the header can be anything - it would be used only by
+	   old Dovecot versions. */
+	uint32_t inbox_inbox_name_id;
+};
+
 struct mailbox_list_index_record {
 	/* points to given id in header */
 	uint32_t name_id;
@@ -93,6 +102,11 @@ struct mailbox_list_index_node {
 	bool corrupted_ext;
 	/* flags are corrupted on disk - need to update it */
 	bool corrupted_flags;
+	/* Raw (unescaped) mailbox name. Unfortunately for now, it may be
+	   either in UTF8 or mUTF-7 depending on the mailbox_list_utf8 setting.
+
+	   As a special case, if raw_name points to ilist->inbox_inbox_name,
+	   it's actually the <ns prefix>/INBOX mailbox (not INBOX). */
 	const char *raw_name;
 };
 
@@ -101,7 +115,7 @@ struct mailbox_list_index {
 
 	const char *path;
 	struct mail_index *index;
-	uint32_t ext_id, msgs_ext_id, hmodseq_ext_id, subs_hdr_ext_id;
+	uint32_t ext_id, ext2_id, msgs_ext_id, hmodseq_ext_id, subs_hdr_ext_id;
 	uint32_t vsize_ext_id, first_saved_ext_id, deleted_count_id;
 	struct timeval last_refresh_timeval;
 
@@ -115,6 +129,17 @@ struct mailbox_list_index {
 	uoff_t sync_log_file_offset;
 	uint32_t sync_stamp;
 	struct timeout *to_refresh;
+
+	/* If mailbox_list_index_node.raw_name contains this pointer, it's
+	   the <ns prefix>/INBOX (not INBOX). Note: Compare this against the
+	   raw_name pointer directly - not the string content. */
+	void *raw_inbox_inbox_name_ptr;
+	/* <escape char>49NBOX, if mailbox_list_storage_escape_char is specified.
+	   Otherwise NULL. */
+	const char *inbox_inbox_storage_name;
+	/* If mailbox_list_index_record.name_id contains this (non-0) ID, it's
+	   the <ns prefix>/INBOX (not INBOX). */
+	uint32_t inbox_inbox_name_id;
 
 	/* uint32_t uid => node */
 	HASH_TABLE(void *, struct mailbox_list_index_node *) mailbox_hash;
@@ -160,20 +185,38 @@ struct mailbox_list_index_node *
 mailbox_list_index_lookup(struct mailbox_list *list, const char *name);
 struct mailbox_list_index_node *
 mailbox_list_index_lookup_uid(struct mailbox_list_index *ilist, uint32_t uid);
-void mailbox_list_index_node_get_path(const struct mailbox_list_index_node *node,
-				      char sep, string_t *str);
+void mailbox_list_index_node_get_path(struct mailbox_list *list,
+				      const struct mailbox_list_index_node *node,
+				      string_t *str);
 void mailbox_list_index_node_unlink(struct mailbox_list_index *ilist,
 				    struct mailbox_list_index_node *node);
+
+void mailbox_list_get_escaped_mailbox_name(struct mailbox_list *list,
+					   const struct mailbox_list_index_node *node,
+					   string_t *escaped_name);
+
+/* Flags appended to box-name header after the mailbox name's trailing NUL.
+   Old Dovecot versions wrote no trailing NUL and no flag byte. The flag byte
+   is only present when at least one bit is set, so a 0 byte never encodes
+   "no flags" - that case is encoded by omitting the trailing NUL+flag. */
+enum mailbox_name_hdr_flags {
+	/* The mailbox is <ns prefix>/INBOX (encoded in the header as just
+	   "INBOX" so that old Dovecot versions still see a sensible name). */
+	MAILBOX_NAME_HDR_FLAG_INBOX_INBOX = 0x01,
+};
 
 /* Return mailbox name encoded into box-name header. */
 const unsigned char *
 mailbox_name_hdr_encode(struct mailbox_list *list, const char *storage_name,
 			size_t *name_len_r);
-/* Return mailbox name decoded from box-name header. */
+/* Return mailbox name decoded from box-name header. If flags_r is non-NULL,
+   it is set to the decoded flag bits (0 if the header is in the old format
+   without a flag byte). */
 const char *
 mailbox_name_hdr_decode_storage_name(struct mailbox_list *list,
 				     const unsigned char *name_hdr,
-				     size_t name_hdr_size);
+				     size_t name_hdr_size,
+				     uint8_t *flags_r);
 
 int mailbox_list_index_index_open(struct mailbox_list *list);
 bool mailbox_list_index_need_refresh(struct mailbox_list_index *ilist,
@@ -200,7 +243,7 @@ int mailbox_list_index_view_open(struct mailbox *box, bool require_refreshed,
 				 uint32_t *seq_r);
 
 struct mailbox_list_index_node *
-mailbox_list_index_node_find_sibling(const struct mailbox_list *list,
+mailbox_list_index_node_find_sibling(struct mailbox_list *list,
 				     struct mailbox_list_index_node *node,
 				     const char *name);
 void mailbox_list_index_reset(struct mailbox_list_index *ilist);

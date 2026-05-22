@@ -166,14 +166,14 @@ struct flatcurve_fts_query_xapian_maybe {
 	Xapian::Query *query;
 };
 
- struct flatcurve_fts_query_xapian {
+struct flatcurve_fts_query_xapian {
 	Xapian::Query *query;
 	ARRAY(struct flatcurve_fts_query_xapian_maybe) maybe_queries;
 
 	bool and_search:1;
 	bool maybe:1;
 	bool start:1;
- };
+};
 
 struct flatcurve_xapian_db_iter {
 	struct flatcurve_fts_backend *backend;
@@ -1987,13 +1987,25 @@ int fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend,
 }
 
 static void
+fts_flatcurve_build_add_maybe_query(struct flatcurve_fts_query *query,
+				    Xapian::Query *q)
+{
+	struct flatcurve_fts_query_xapian_maybe *mquery;
+	struct flatcurve_fts_query_xapian *x = query->xapian;
+
+	if (!array_is_created(&x->maybe_queries))
+		p_array_init(&x->maybe_queries, query->pool, 4);
+	mquery = array_append_space(&x->maybe_queries);
+	mquery->query = q;
+}
+
+static void
 fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 				   struct mail_search_arg *arg,
 				   const char *term)
 {
 	const char *hdr;
 	bool maybe_or = FALSE;
-	struct flatcurve_fts_query_xapian_maybe *mquery;
 	Xapian::Query::op op = Xapian::Query::OP_INVALID;
 	Xapian::Query *oldq, q;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
@@ -2084,10 +2096,8 @@ fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 		/* Maybe searches are not added to the "master search" query if this
 		 * is an OR search; they will be run independently. Matches will be
 		 * placed in the maybe results array. */
-		if (!array_is_created(&x->maybe_queries))
-			p_array_init(&x->maybe_queries, query->pool, 4);
-		mquery = array_append_space(&x->maybe_queries);
-		mquery->query = new Xapian::Query(std_move(q));
+		fts_flatcurve_build_add_maybe_query(query,
+						    new Xapian::Query(std_move(q)));
 	} else if (x->query == NULL) {
 		x->query = new Xapian::Query(std_move(q));
 	} else {
@@ -2103,6 +2113,20 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 {
 	if (arg->no_fts)
 		return;
+
+	/* Phrase searching is not supported natively, so we can only do
+	 * single token searching (as FTS core provides index terms without
+	 * positional context).
+	 *
+	 * We can do matching for the tokenized input, as these results reduce
+	 * the message space iterated by the core search code to do the full
+	 * phrase matching (since these results are ANDed with the phrase search
+	 * due to FTS_BACKEND_FLAG_SEARCH_ARGS_V2 being set). */
+	if (HAS_ANY_BITS(arg->value.search_flags, MAIL_SEARCH_ARG_FLAG_PHRASE_FULL)) {
+		/* We skip the full phrase and don't set "match_always", so
+		 * that the core FTS code will process this search argument. */
+		return;
+	}
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
@@ -2138,19 +2162,9 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		return;
 	}
 
-	if (strchr(arg->value.str, ' ') == NULL) {
-		/* Prepare search term.
-		 * This includes existence searches where arg is "" */
-		fts_flatcurve_build_query_arg_term(query, arg, arg->value.str);
-	} else {
-		/* Phrase searching is not supported natively, so we can only do
-		 * single term searching with Xapian (FTS core provides index
-		 * terms without positional context).
-
-		 * FTS core will send both the phrase search and individual search
-		 * terms separately as part of the same query. Therefore, if we
-		 * encounter a multi-term search, just ignore it */
-	}
+	/* Prepare search term.
+	 * This includes existence searches where arg is "" */
+	fts_flatcurve_build_query_arg_term(query, arg, arg->value.str);
 }
 
 void

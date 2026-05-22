@@ -592,7 +592,7 @@ static int index_list_mailbox_open(struct mailbox *box)
 		/* Mailbox name is corrupted. Rename it to the previous name. */
 		const char *newname =
 			mailbox_name_hdr_decode_storage_name(
-				box->list, name_hdr, name_hdr_size);
+				box->list, name_hdr, name_hdr_size, NULL);
 		index_list_rename_corrupted(box, newname);
 	}
 	return 0;
@@ -722,7 +722,7 @@ index_list_try_delete_nonexistent_parent(struct mailbox_list *_list,
 			/* The parent mailbox has no other children and is not
 			   existant or not selectable, delete it */
 			str_truncate(full_name, 0);
-			mailbox_list_index_node_get_path(node, sep, full_name);
+			mailbox_list_index_node_get_path(_list, node, full_name);
 			if (index_list_delete_entry(list, str_c(full_name), FALSE) < 0)
 				return -1;
 

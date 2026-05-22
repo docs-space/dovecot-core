@@ -11,7 +11,9 @@ struct master_status {
 	pid_t pid;
 	/* uid is used to check for old/invalid status messages */
 	unsigned int uid;
-	/* number of new connections process is currently accepting */
+	/* number of new connections process is currently accepting.
+	   UINT_MAX = it has reached restart_request_count and is only
+	   handling existing connections. */
 	unsigned int available_count;
 };
 
@@ -62,6 +64,9 @@ enum master_login_state {
 /* getenv(MASTER_SERVICE_IDLE_KILL_ENV) specifies service's idle_kill_interval
    timeout in seconds. */
 #define MASTER_SERVICE_IDLE_KILL_INTERVAL_ENV "IDLE_KILL_INTERVAL"
+
+/* getenv(MASTER_REUSE_PORT_ENV) is non-NULL if service_reuse_port=yes */
+#define MASTER_REUSE_PORT_ENV "REUSE_PORT"
 
 /* getenv(MASTER_CONFIG_FILE_ENV) provides path to configuration file. */
 #define MASTER_CONFIG_FILE_ENV "CONFIG_FILE"

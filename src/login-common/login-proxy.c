@@ -237,7 +237,8 @@ static void proxy_rawlog_init(struct login_proxy *proxy)
 
 	proxy->pre_rawlog_input = proxy->server_input;
 	proxy->pre_rawlog_output = proxy->server_output;
-	if (iostream_rawlog_create(proxy->rawlog_dir, &proxy->server_input,
+	if (iostream_rawlog_create(proxy->event, "login_proxy_rawlog_dir",
+				   proxy->rawlog_dir, &proxy->server_input,
 				   &proxy->server_output) < 0)
 		return;
 	proxy->rawlog_input = proxy->server_input;
@@ -257,6 +258,21 @@ static void proxy_rawlog_deinit(struct login_proxy *proxy)
 	o_stream_destroy(&proxy->rawlog_output);
 	proxy->server_input = proxy->pre_rawlog_input;
 	proxy->server_output = proxy->pre_rawlog_output;
+	proxy->pre_rawlog_input = NULL;
+	proxy->pre_rawlog_output = NULL;
+}
+
+static void proxy_multiplex_deinit(struct login_proxy *proxy)
+{
+	if (proxy->multiplex_input == NULL)
+		return;
+
+	i_assert(proxy->server_input == proxy->multiplex_input);
+	i_stream_unref(&proxy->side_channel_input);
+	i_stream_unref(&proxy->server_input);
+	proxy->server_input = proxy->multiplex_orig_input;
+	proxy->multiplex_input = NULL;
+	proxy->multiplex_orig_input = NULL;
 }
 
 static void proxy_plain_connected(struct login_proxy *proxy)
@@ -337,6 +353,10 @@ login_proxy_set_destination(struct login_proxy *proxy, const char *host,
 	proxy->port = port;
 	proxy->state_rec = login_proxy_state_get(proxy_state, &proxy->ip,
 						 proxy->port);
+
+	event_add_str(proxy->event, "dest_host", host);
+	event_add_ip(proxy->event, "dest_ip", ip);
+	event_add_int(proxy->event, "dest_port", port);
 
 	/* Include destination ip:port also in the log prefix */
 	event_set_append_log_prefix(
@@ -555,9 +575,6 @@ int login_proxy_new(struct client *client, struct event *event,
 	/* add event fields */
 	event_add_ip(proxy->event, "source_ip",
 		     login_proxy_get_source_host(proxy));
-	event_add_ip(proxy->event, "dest_ip", &set->ip);
-	event_add_int(proxy->event, "dest_port", set->port);
-	event_add_str(event, "dest_host", set->host);
 	event_add_str(event, "master_user", client->proxy_master_user);
 
 	client_ref(client);
@@ -598,9 +615,9 @@ static void login_proxy_disconnect(struct login_proxy *proxy)
 
 	io_remove(&proxy->side_channel_io);
 	io_remove(&proxy->server_io);
-	i_stream_destroy(&proxy->multiplex_orig_input);
-	proxy->multiplex_input = NULL;
-	i_stream_destroy(&proxy->side_channel_input);
+	proxy_multiplex_deinit(proxy);
+	proxy_rawlog_deinit(proxy);
+
 	i_stream_destroy(&proxy->server_input);
 	o_stream_destroy(&proxy->server_output);
 	if (proxy->server_fd != -1) {
@@ -834,6 +851,14 @@ bool login_proxy_failed(struct login_proxy *proxy, struct event *event,
 {
 	const char *log_prefix;
 	bool try_reconnect = TRUE;
+
+	if (type == LOGIN_PROXY_FAILURE_TYPE_AUTH_REDIRECT) {
+		proxy->redirect_callback(proxy->client, event, reason);
+		/* return value doesn't matter here, because we can't be
+		   coming from login_proxy_connect(). */
+		return FALSE;
+	}
+
 	event_add_str(event, "error", reason);
 
 	switch (type) {
@@ -866,11 +891,6 @@ bool login_proxy_failed(struct login_proxy *proxy, struct event *event,
 	case LOGIN_PROXY_FAILURE_TYPE_AUTH_TEMPFAIL:
 		log_prefix = "";
 		break;
-	case LOGIN_PROXY_FAILURE_TYPE_AUTH_REDIRECT:
-		proxy->redirect_callback(proxy->client, event, reason);
-		/* return value doesn't matter here, because we can't be
-		   coming from login_proxy_connect(). */
-		return FALSE;
 	default:
 		i_unreached();
 	}
@@ -1001,8 +1021,18 @@ void login_proxy_redirect_finish(struct login_proxy *proxy,
 	/* disconnect from current backend */
 	login_proxy_disconnect(proxy);
 
-	e_debug(proxy->event, "Redirecting to %s", net_ipport2str(ip, port));
+	struct event_passthrough *ef = event_create_passthrough(proxy->event)->
+		add_str("disconnect_reason", "Redirecting")->
+		add_str("disconnect_side", LOGIN_PROXY_SIDE_SELF)->
+		add_str("error_code", "proxy_dest_redirected")->
+		set_name("proxy_session_finished");
+	e_debug(ef->event(), "Redirecting to %s", net_ipport2str(ip, port));
+
 	login_proxy_set_destination(proxy, net_ip2addr(ip), ip, port);
+	struct event_passthrough *es = event_create_passthrough(proxy->event)->
+		set_name("proxy_session_started");
+	e_debug(es->event(), "Started redirected proxy session");
+
 	(void)login_proxy_connect(proxy);
 }
 
@@ -1227,11 +1257,7 @@ void login_proxy_detach(struct login_proxy *proxy)
 		/* both sides of the proxy want multiplexing and there are no
 		   plugins hooking into the ostream. We can just step out of
 		   the way and let the two sides multiplex directly. */
-		i_stream_unref(&proxy->side_channel_input);
-		i_stream_unref(&proxy->server_input);
-		proxy->server_input = proxy->multiplex_orig_input;
-		proxy->multiplex_input = NULL;
-		proxy->multiplex_orig_input = NULL;
+		proxy_multiplex_deinit(proxy);
 
 		o_stream_unref(&proxy->client_output);
 		proxy->client_output = client->multiplex_orig_output;
@@ -1289,20 +1315,17 @@ int login_proxy_starttls(struct login_proxy *proxy)
 	if ((proxy->ssl_flags & AUTH_PROXY_SSL_FLAG_ANY_CERT) != 0)
 		ssl_flags |= SSL_IOSTREAM_FLAG_ALLOW_INVALID_CERT;
 
+	if (proxy->multiplex_orig_input != NULL) {
+		/* restart multiplexing after TLS iostreams are set up.
+		   Multiplex sits on top of rawlog, so it must be removed
+		   before proxy_rawlog_deinit() to satisfy its server_input ==
+		   rawlog_input assertion. */
+		proxy_multiplex_deinit(proxy);
+		add_multiplex_istream = TRUE;
+	}
 	proxy_rawlog_deinit(proxy);
 	io_remove(&proxy->side_channel_io);
 	io_remove(&proxy->server_io);
-
-	if (proxy->multiplex_orig_input != NULL) {
-		/* restart multiplexing after TLS iostreams are set up */
-		i_assert(proxy->server_input == proxy->multiplex_input);
-		i_stream_unref(&proxy->server_input);
-		proxy->server_input = proxy->multiplex_orig_input;
-		i_stream_unref(&proxy->side_channel_input);
-		proxy->multiplex_input = NULL;
-		proxy->multiplex_orig_input = NULL;
-		add_multiplex_istream = TRUE;
-	}
 	const struct ssl_iostream_client_autocreate_parameters parameters = {
 		.event_parent = proxy->event,
 		.host = proxy->host,
@@ -1357,6 +1380,11 @@ bool login_proxy_failed_because_invalid_cert(struct login_proxy *proxy)
 void login_proxy_input_halt(struct login_proxy *proxy)
 {
 	io_remove(&proxy->server_io);
+}
+
+bool login_proxy_multiplex_input_started(struct login_proxy *proxy)
+{
+	return proxy->multiplex_input != NULL;
 }
 
 void login_proxy_multiplex_input_start(struct login_proxy *proxy)
