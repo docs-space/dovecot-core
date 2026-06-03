@@ -123,48 +123,49 @@ read_params_debconf()
 
 insert_db()
 {
-	PGPASSWORD="$MDA_DB_PWD" psql \
-    -h "$MDA_DB_HOST" \
-    -p "$MDA_DB_PORT" \
-    -U "$MDA_DB_USER" \
-    -d "$MDA_DB_NAME" \
-    -v ON_ERROR_STOP=0 \
-    -v MDA_HOST="$MDA_HOSTNAME" \
-    -v MDA_LMTP_LISTEN="$MDA_LMTP_LISTEN" \
-    -v MDA_LMTP_PORT="$MDA_LMTP_PORT" \
-    -v MDA_LMTP_TLS="$MDA_LMTP_TLS" \
-	-v MDA_IMAP_LISTEN="$MDA_IMAP_LISTEN" \
-    -v MDA_IMAP_PORT="$MDA_IMAP_PORT" \
-	-v MDA_IMAPS_LISTEN="$MDA_IMAPS_LISTEN" \
-    -v MDA_IMAPS_PORT="$MDA_IMAPS_PORT" \
-    -v MDA_HTTP_PORT="$MDA_DOVEADM_PORT" \
-    -v MDA_HTTP_TLS="$MDA_DOVEADM_TLS" \
-    -v MDA_INSTANCE="$MDA_INSTANCE" 2>/dev/null <<'EOF'
+    (
+        PGPASSWORD="$MDA_DB_PWD" psql \
+            -h "$MDA_DB_HOST" \
+            -p "$MDA_DB_PORT" \
+            -U "$MDA_DB_USER" \
+            -d "$MDA_DB_NAME" \
+            -v ON_ERROR_STOP=0 \
+            -v MDA_HOST="$MDA_HOSTNAME" \
+            -v MDA_LMTP_LISTEN="$MDA_LMTP_LISTEN" \
+            -v MDA_LMTP_PORT="$MDA_LMTP_PORT" \
+            -v MDA_LMTP_TLS="$MDA_LMTP_TLS" \
+            -v MDA_IMAP_LISTEN="$MDA_IMAP_LISTEN" \
+            -v MDA_IMAP_PORT="$MDA_IMAP_PORT" \
+            -v MDA_IMAPS_LISTEN="$MDA_IMAPS_LISTEN" \
+            -v MDA_IMAPS_PORT="$MDA_IMAPS_PORT" \
+            -v MDA_HTTP_PORT="$MDA_DOVEADM_PORT" \
+            -v MDA_HTTP_TLS="$MDA_DOVEADM_TLS" \
+            -v MDA_INSTANCE="$MDA_INSTANCE" 2>/dev/null <<'EOF'
 INSERT INTO public."MdaServers" (
-"Name", "LmtpIp", "LmtpPort", "LmtpTls",
-"ImapIp", "ImapPort", "ImapsIp", "ImapsPort",
-"HttpIp", "HttpPort", "HttpTls", "IsDefault", "MdaGroupId", "Node"
+    "Name", "LmtpIp", "LmtpPort", "LmtpTls",
+    "ImapIp", "ImapPort", "ImapsIp", "ImapsPort",
+    "HttpIp", "HttpPort", "HttpTls", "IsDefault", "MdaGroupId", "Node"
 )
 SELECT
-:MDA_HOST,
-:MDA_LMTP_LISTEN,
-:MDA_LMTP_PORT,
-CASE WHEN :MDA_LMTP_TLS = 'yes' THEN true ELSE false END,
-CASE WHEN :MDA_IMAP_LISTEN = '0.0.0.0' THEN :MDA_HOST ELSE :MDA_IMAP_LISTEN END,
-:MDA_IMAP_PORT,
-CASE WHEN :MDA_IMAPS_LISTEN = '0.0.0.0' THEN :MDA_HOST ELSE :MDA_IMAPS_LISTEN END,
-:MDA_IMAPS_PORT,
-:MDA_HOST,
-:MDA_HTTP_PORT,
-CASE WHEN :MDA_HTTP_TLS = 'yes' THEN true ELSE false END,
-true,
-1,
-:MDA_INSTANCE
+    :MDA_HOST,
+    :MDA_LMTP_LISTEN,
+    :MDA_LMTP_PORT,
+    CASE WHEN :MDA_LMTP_TLS = 'yes' THEN true ELSE false END,
+    CASE WHEN :MDA_IMAP_LISTEN = '0.0.0.0' THEN :MDA_HOST ELSE :MDA_IMAP_LISTEN END,
+    :MDA_IMAP_PORT,
+    CASE WHEN :MDA_IMAPS_LISTEN = '0.0.0.0' THEN :MDA_HOST ELSE :MDA_IMAPS_LISTEN END,
+    :MDA_IMAPS_PORT,
+    :MDA_HOST,
+    :MDA_HTTP_PORT,
+    CASE WHEN :MDA_HTTP_TLS = 'yes' THEN true ELSE false END,
+    true,
+    1,
+    :MDA_INSTANCE
 WHERE NOT EXISTS (
-SELECT 1 FROM public."MdaServers" WHERE "Node" = :MDA_INSTANCE
+    SELECT 1 FROM public."MdaServers" WHERE "Node" = :MDA_INSTANCE
 );
-EOF 
-) | true
+EOF
+    ) | true
 }
 
 save_params_debconf()
