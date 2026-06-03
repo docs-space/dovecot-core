@@ -4,15 +4,13 @@
 #include "env-util.h"
 #include "ostream.h"
 #include "master-service.h"
+#include "all-settings.h"
 #include "config-parser.h"
 #include "dovecot-version.h"
 #include "test-common.h"
 #include "test-dir.h"
 
 #define TEST_CONFIG_FILE "environment.conf"
-
-static const struct config_service test_config_all_services[] = { { NULL, NULL } };
-const struct config_service *config_all_services = test_config_all_services;
 
 static void write_config_file(const char *contents)
 {
