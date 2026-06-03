@@ -2,7 +2,6 @@
 
 #include "auth-common.h"
 #include "array.h"
-#include "lib-signals.h"
 #include "hash.h"
 #include "str.h"
 #include "strescape.h"
@@ -202,43 +201,6 @@ auth_cache_node_destroy(struct auth_cache *cache, struct auth_cache_node *node)
 	i_free(node);
 }
 
-static void sig_auth_cache_clear(const siginfo_t *si ATTR_UNUSED, void *context)
-{
-	struct auth_cache *cache = context;
-
-	e_info(cache->event, "SIGHUP received, %u cache entries flushed",
-	       auth_cache_clear(cache));
-}
-
-static void sig_auth_cache_stats(const siginfo_t *si ATTR_UNUSED, void *context)
-{
-	struct auth_cache *cache = context;
-	unsigned int total_count;
-	size_t cache_used;
-
-	total_count = cache->hit_count + cache->miss_count;
-	e_info(cache->event, "Authentication cache hits %u/%u (%u%%)",
-	       cache->hit_count, total_count,
-	       total_count == 0 ? 100 : (cache->hit_count * 100 / total_count));
-
-	e_info(cache->event, "Authentication cache inserts: "
-	       "positive: %u entries %llu bytes, "
-	       "negative: %u entries %llu bytes",
-	       cache->pos_entries, cache->pos_size,
-	       cache->neg_entries, cache->neg_size);
-
-	cache_used = cache->max_size - cache->size_left;
-	e_info(cache->event, "Authentication cache current size: "
-	       "%zu bytes used of %zu bytes (%u%%)",
-	       cache_used, cache->max_size,
-	       (unsigned int)(cache_used * 100ULL / cache->max_size));
-
-	/* reset counters */
-	cache->hit_count = cache->miss_count = 0;
-	cache->pos_entries = cache->neg_entries = 0;
-	cache->pos_size = cache->neg_size = 0;
-}
-
 struct auth_cache *auth_cache_new(size_t max_size, unsigned int ttl_secs,
 				  unsigned int neg_ttl_secs
 )
@@ -253,10 +215,6 @@ struct auth_cache *auth_cache_new(size_t max_size, unsigned int ttl_secs,
 	cache->neg_ttl_secs = neg_ttl_secs;
 	cache->event = event_create(auth_event);
 
-	lib_signals_set_handler(SIGHUP, LIBSIG_FLAGS_SAFE,
-				sig_auth_cache_clear, cache);
-	lib_signals_set_handler(SIGUSR2, LIBSIG_FLAGS_SAFE,
-				sig_auth_cache_stats, cache);
 	return cache;
 }
 
@@ -265,13 +223,32 @@ void auth_cache_free(struct auth_cache **_cache)
 	struct auth_cache *cache = *_cache;
 
 	*_cache = NULL;
-	lib_signals_unset_handler(SIGHUP, sig_auth_cache_clear, cache);
-	lib_signals_unset_handler(SIGUSR2, sig_auth_cache_stats, cache);
 
 	auth_cache_clear(cache);
 	hash_table_destroy(&cache->hash);
 	event_unref(&cache->event);
 	i_free(cache);
+}
+
+void auth_cache_get_status(const struct auth_cache *cache,
+			   struct auth_cache_status *status_r)
+{
+	i_zero(status_r);
+	status_r->hit_count = cache->hit_count;
+	status_r->miss_count = cache->miss_count;
+	status_r->pos_entries = cache->pos_entries;
+	status_r->neg_entries = cache->neg_entries;
+	status_r->pos_size = cache->pos_size;
+	status_r->neg_size = cache->neg_size;
+	status_r->max_size = cache->max_size;
+	status_r->used_size = cache->max_size - cache->size_left;
+}
+
+void auth_cache_reset_counters(struct auth_cache *cache)
+{
+	cache->hit_count = cache->miss_count = 0;
+	cache->pos_entries = cache->neg_entries = 0;
+	cache->pos_size = cache->neg_size = 0;
 }
 
 unsigned int auth_cache_clear(struct auth_cache *cache)
