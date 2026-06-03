@@ -11,6 +11,7 @@
 #include "safe-mkdir.h"
 #include "restrict-process-size.h"
 #include "settings.h"
+#include "var-expand.h"
 #include "master-settings.h"
 
 #include <dirent.h>
@@ -479,6 +480,30 @@ master_service_get_file_listeners(pool_t pool, struct event *event,
 	return ret;
 }
 
+static const char *
+master_expand_listen_address(pool_t pool, const char *address,
+			   const char **error_r)
+{
+	string_t *str;
+
+	if (strstr(address, "%{") == NULL)
+		return p_strdup(pool, address);
+
+	str = t_str_new(64);
+	if (var_expand(str, address, NULL, error_r) < 0) {
+		*error_r = t_strdup_printf(
+			"Failed to expand listen address %s: %s",
+			address, *error_r);
+		return NULL;
+	}
+	if (str_len(str) == 0) {
+		*error_r = t_strdup_printf(
+			"Listen address expanded empty: %s", address);
+		return NULL;
+	}
+	return p_strdup(pool, str_c(str));
+}
+
 void master_config_init_debug_listen(const char *phase,
 				     const char *service_name,
 				     const char *listener_name,
@@ -571,12 +596,25 @@ master_service_get_inet_listeners(struct service_settings *service_set,
 			service_name, name, listener_set->port,
 			array_count(&master_set->listen));
 		array_foreach_elem(&master_set->listen, address) {
-			master_config_init_debug_listen("settings_get(master)",
+			const char *expanded =
+				master_expand_listen_address(
+					listener_set_dup->pool, address, &error);
+			if (expanded == NULL) {
+				*error_r = t_strdup_printf(
+					"service %s inet_listener %s: %s",
+					service_name, name, error);
+				ret = FALSE;
+				settings_free(master_set);
+				settings_free(listener_set);
+				event_unref(&event);
+				return FALSE;
+			}
+			master_config_init_debug_listen("parsed_inet_listener",
 							service_name, name,
-							address);
+							expanded);
 			const char **address_copy =
 				array_append_space(&listener_set_dup->listen);
-			*address_copy = p_strdup(listener_set_dup->pool, address);
+			*address_copy = expanded;
 		}
 		settings_free(master_set);
 
