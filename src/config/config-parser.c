@@ -2286,7 +2286,8 @@ config_parse_line(struct config_parser_context *ctx,
 			config_line_r->type = CONFIG_LINE_TYPE_KEYFILE;
 			return;
 		}
-		if (*line != '\'' && *line != '"' && strchr(line, '$') != NULL) {
+		if (*line != '\'' && *line != '"' &&
+		    (strchr(line, '$') != NULL || strstr(line, "%{") != NULL)) {
 			config_line_r->value = line;
 			config_line_r->type = CONFIG_LINE_TYPE_KEYVARIABLE;
 			return;
@@ -2596,13 +2597,22 @@ static int config_expand_value(struct config_parser_context *ctx,
 			       struct config_filter_parser *filter_parser,
 			       const char *key, const char **value)
 {
-	if ((*value)[0] == CONFIG_VALUE_PREFIX_EXPANDED)
-		return 0;
-	i_assert((*value)[0] == CONFIG_VALUE_PREFIX_SET_UNEXPANDED);
+	const char *expand_str;
+
+	if ((*value)[0] == CONFIG_VALUE_PREFIX_EXPANDED) {
+		/* KEYVALUE lines are marked expanded without substituting
+		   %{variables}. Expand them here. */
+		if (strstr(*value + 1, "%{") == NULL)
+			return 0;
+		expand_str = *value + 1;
+	} else {
+		i_assert((*value)[0] == CONFIG_VALUE_PREFIX_SET_UNEXPANDED);
+		expand_str = *value + 1;
+	}
 
 	string_t *new_value = t_str_new(128);
 	if (config_write_keyvariable(ctx, filter_parser, key,
-				     *value + 1, new_value, FALSE) < 0) {
+				     expand_str, new_value, FALSE) < 0) {
 		/* We mostly checked the validity of the value. If we're here,
 		   it should be because the settings expansion went into
 		   recursive loop. */

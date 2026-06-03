@@ -518,6 +518,17 @@ static const struct master_settings *master_settings_read(void)
 		i_fatal("%s", error);
 	global_config_fd = output.config_fd;
 	fd_close_on_exec(global_config_fd, TRUE);
+
+	/* settings_get(master) expands %{env:MDA_*} — import before that */
+	const char *environment =
+		master_service_get_environment_keyvals(master_service);
+	if (*environment != '\0')
+		master_service_import_environment(environment);
+	const char *import_environment =
+		master_service_get_import_environment_keyvals(master_service);
+	if (*import_environment != '\0')
+		master_service_import_environment(import_environment);
+
 	return settings_get_or_fatal(master_service_get_event(master_service),
 				     &master_setting_parser_info);
 }
