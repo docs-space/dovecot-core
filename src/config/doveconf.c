@@ -1183,12 +1183,6 @@ int main(int argc, char *argv[])
 			const char *environment =
 				config_parsed_get_setting(config,
 					"master_service", "environment");
-			i_debug("master config init: doveconf -F exec "
-				"(environment_len=%u, import_environment_len=%u)",
-				environment != NULL ?
-				(unsigned)strlen(environment) : 0,
-				import_environment != NULL ?
-				(unsigned)strlen(import_environment) : 0);
 			if (environment != NULL && *environment != '\0')
 				master_service_import_environment(environment);
 			master_service_import_environment(import_environment);

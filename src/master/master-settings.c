@@ -504,39 +504,6 @@ master_expand_listen_address(pool_t pool, const char *address,
 	return p_strdup(pool, str_c(str));
 }
 
-void master_config_init_debug_listen(const char *phase,
-				     const char *service_name,
-				     const char *listener_name,
-				     const char *address)
-{
-	const char *p, *env_key, *env_val;
-
-	if (strstr(address, "%{") == NULL) {
-		i_debug("master config init: %s service(%s) inet_listener(%s) "
-			"listen=%s", phase, service_name, listener_name, address);
-		return;
-	}
-
-	p = strstr(address, "%{env:");
-	if (p != NULL) {
-		env_key = p + 6;
-		p = strchr(env_key, '}');
-		if (p != NULL) {
-			env_key = t_strdup_until(env_key, p);
-			env_val = getenv(env_key);
-			i_warning("master config init: %s service(%s) "
-				  "inet_listener(%s) unexpanded listen=%s "
-				  "(%%{env:%s} getenv=%s)",
-				  phase, service_name, listener_name, address,
-				  env_key, env_val != NULL ? env_val : "(unset)");
-			return;
-		}
-	}
-	i_warning("master config init: %s service(%s) inet_listener(%s) "
-		  "unexpanded listen=%s", phase, service_name, listener_name,
-		  address);
-}
-
 static bool
 master_service_get_inet_listeners(struct service_settings *service_set,
 				  const char *service_name,
@@ -591,10 +558,6 @@ master_service_get_inet_listeners(struct service_settings *service_set,
 		pool_add_external_ref(pool, listener_set->pool);
 		const char *address;
 
-		i_debug("master config init: parsing inet_listener service(%s) "
-			"name=%s port=%u listen_count=%u",
-			service_name, name, listener_set->port,
-			array_count(&master_set->listen));
 		array_foreach_elem(&master_set->listen, address) {
 			const char *expanded =
 				master_expand_listen_address(
@@ -609,9 +572,6 @@ master_service_get_inet_listeners(struct service_settings *service_set,
 				event_unref(&event);
 				return FALSE;
 			}
-			master_config_init_debug_listen("parsed_inet_listener",
-							service_name, name,
-							expanded);
 			const char **address_copy =
 				array_append_space(&listener_set_dup->listen);
 			*address_copy = expanded;

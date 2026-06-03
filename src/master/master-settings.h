@@ -34,9 +34,4 @@ extern const struct setting_parser_info master_setting_parser_info;
 
 void master_settings_do_fixes(const struct master_settings *set);
 
-void master_config_init_debug_listen(const char *phase,
-				     const char *service_name,
-				     const char *listener_name,
-				     const char *address);
-
 #endif

@@ -20,7 +20,6 @@
 #include "stats-client.h"
 #include "master-service-private.h"
 #include "master-service-settings.h"
-#include "master-interface.h"
 #include "strescape.h"
 
 #include <unistd.h>
@@ -626,17 +625,8 @@ master_service_settings_read_int(struct master_service *service,
 	   expand %{env:...} (e.g. service inet_listener listen=). */
 	const char *environment =
 		master_service_get_environment_keyvals(service);
-	i_debug("master config init: settings_read done "
-		"(import_environment_missing=%d, environment_block_len=%u, "
-		"config_fd=%d, DOVECOT_CONFIG_FD=%s, MASTER_IS_PARENT=%s)",
-		import_environment_missing,
-		(unsigned)strlen(environment), fd,
-		getenv(DOVECOT_CONFIG_FD_ENV) != NULL ? getenv(DOVECOT_CONFIG_FD_ENV) : "(unset)",
-		getenv(MASTER_IS_PARENT_ENV) != NULL ? "yes" : "no");
 	if (*environment != '\0')
 		master_service_import_environment(environment);
-	else
-		i_warning("master config init: environment { } block is empty in config");
 
 	if (import_environment_missing) {
 		const char *import_environment =
