@@ -48,6 +48,11 @@ Template: r7mdaserver/mda-doveadm-key
 Type: password
 Description: X-Dovecot-API key for Doveadm HTTP-API:
 
+Template: r7mdaserver/mda-doveadm-tls
+Type: string
+Default: yes
+Description: Enable MDA Doveadm TLS
+
 Template: r7mdaserver/mda-nodename
 Type: string
 Description: X-Dovecot-API key for Doveadm HTTP-API:
@@ -61,4 +66,64 @@ Template: r7mdaserver/fqdn-name
 Type: string
 Default: mx.localhost
 Description: FQDN name
+
+Template: r7mdaserver/mda-auth-listen
+Type: string
+Default: 0.0.0.0
+Description: MDA Auth listen address
+
+Template: r7mdaserver/mda-auth-port
+Type: string
+Default: 12345
+Description: MDA Auth port
+
+Template: r7mdaserver/mda-auth-tls
+Type: string
+Default: yes
+Description: Enable MDA Auth TLS
+
+Template: r7mdaserver/mda-auth-trust-net
+Type: string
+Default: 127.0.0.1/32
+Description: MDA Auth trusted network
+
+Template: r7mdaserver/mda-lmtp-listen
+Type: string
+Default: 127.0.0.1
+Description: MDA LMTP listen address
+
+Template: r7mdaserver/mda-lmtp-port
+Type: string
+Default: 24
+Description: MDA LMTP port
+
+Template: r7mdaserver/mda-lmtp-tls
+Type: string
+Default: yes
+Description: Enable MDA LMTP TLS
+
+Template: r7mdaserver/mda-imap-listen
+Type: string
+Default: 0.0.0.0
+Description: MDA IMAP listen address
+
+Template: r7mdaserver/mda-imap-port
+Type: string
+Default: 143
+Description: MDA IMAP port
+
+Template: r7mdaserver/mda-imaps-listen
+Type: string
+Default: 0.0.0.0
+Description: MDA IMAPS listen address
+
+Template: r7mdaserver/mda-imaps-port
+Type: string
+Default: 993
+Description: MDA IMAPS port
+
+Template: r7mdaserver/mda-imaps-tls
+Type: string
+Default: yes
+Description: Enable MDA IMAPS TLS
 
