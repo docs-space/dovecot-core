@@ -15,8 +15,8 @@ case "$1" in
         db_input critical r7mdaserver/mda-ssl-cert || true
         db_input critical r7mdaserver/mda-ssl-key || true
         db_input critical r7mdaserver/mda-dh-key || true
-        db_input critical r7mdaserver/mda-doveadm-key || true
         db_input critical r7mdaserver/mda-nodename || true
+        db_input critical r7mdaserver/mda-doveadm-key || true
         db_input critical r7mdaserver/fqdn-name || true
         db_go
         ;;

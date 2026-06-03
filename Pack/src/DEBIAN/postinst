@@ -6,16 +6,75 @@ set -e
 MDA_CONF_DIR=/opt/r7-mailserver/mdaserver/etc/dovecot
 MDA_CONF_ENV=$MDA_CONF_DIR/conf.d/00-environment.conf
 
+MDA_LMTP_LISTEN=127.0.0.1
+MDA_LMTP_PORT=24
+MDA_LMTP_TLS=yes
+MDA_IMAP_LISTEN=0.0.0.0
+MDA_IMAP_PORT=143
+MDA_IMAPS_LISTEN=0.0.0.0
+MDA_IMAPS_PORT=993
+MDA_IMAPS_TLS=yes
+MDA_AUTH_LISTEN=0.0.0.0
+MDA_AUTH_PORT=12345
+MDA_AUTH_TLS=yes
+MDA_AUTH_TRUST_NET=127.0.0.1/32
+MDA_DOVEADM_PORT=12346
+MDA_DOVEADM_TLS=yes
+
+
 read_params_debconf()
 {
 	echo "Reading parameters..."
+
+    db_get r7mdaserver/mda-auth-listen || true
+    printf "Debug: $RET\n"
+    MDA_AUTH_LISTEN="${RET:-$MDA_AUTH_LISTEN}"
+	db_get r7mdaserver/mda-auth-port || true
+    printf "Debug: $RET\n"
+    MDA_AUTH_PORT="${RET:-$MDA_AUTH_PORT}"
+	db_get r7mdaserver/mda-auth-tls || true
+    printf "Debug: $RET\n"
+    MDA_AUTH_TLS="${RET:-$MDA_AUTH_TLS}"
+	db_get r7mdaserver/mda-auth-trust-net || true
+    printf "Debug: $RET\n"
+    MDA_AUTH_TRUST_NET="${RET:-$MDA_AUTH_TRUST_NET}"
+
+    db_get r7mdaserver/mda-lmtp-listen || true
+    printf "Debug: $RET\n"
+    MDA_LMTP_LISTEN="${RET:-$MDA_LMTP_LISTEN}"
+	db_get r7mdaserver/mda-lmtp-port || true
+    printf "Debug: $RET\n"
+    MDA_LMTP_PORT="${RET:-$MDA_LMTP_PORT}"
+	db_get r7mdaserver/mda-lmtp-tls || true
+    printf "Debug: $RET\n"
+    MDA_LMTP_TLS="${RET:-$MDA_LMTP_TLS}"
+
+    db_get r7mdaserver/mda-imap-listen || true
+    printf "Debug: $RET\n"
+    MDA_IMAP_LISTEN="${RET:-$MDA_IMAP_LISTEN}"
+	db_get r7mdaserver/mda-imap-port || true
+    printf "Debug: $RET\n"
+    MDA_IMAP_PORT="${RET:-$MDA_IMAP_PORT}"
+    db_get r7mdaserver/mda-imaps-listen || true
+    printf "Debug: $RET\n"
+    MDA_IMAPS_LISTEN="${RET:-$MDA_IMAPS_LISTEN}"
+	db_get r7mdaserver/mda-imaps-port || true
+    printf "Debug: $RET\n"
+    MDA_IMAPS_PORT="${RET:-$MDA_IMAPS_PORT}"
+	db_get r7mdaserver/mda-imaps-tls || true
+    printf "Debug: $RET\n"
+    MDA_IMAPS_TLS="${RET:-$MDA_IMAPS_TLS}"
+
 	db_get r7mdaserver/mda-nodename || true
 	printf "Debug: $RET\n"
     MDA_INSTANCE="${RET:-$(cat /proc/sys/kernel/random/uuid)}"
 
     db_get r7mdaserver/mda-doveadm-key || true
 	printf "Debug: $RET\n"
-    MDA_API_KEY="${RET:-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)}"
+    MDA_DOVEADM_KEY="${RET:-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)}"
+    db_get r7mdaserver/mda-doveadm-tls || true
+    printf "Debug: $RET\n"
+    MDA_DOVEADM_TLS="${RET:-$MDA_DOVEADM_TLS}"
 
     db_get r7mdaserver/mda-ssl-cert || true
 	printf "Debug: $RET\n"
@@ -44,12 +103,12 @@ read_params_debconf()
     MDA_DB_PWD="${RET:-saSA123$}"
 #    db_get r7mailserver/upgrade
 #    UPGRADE="$RET"
+
     db_get r7mdaserver/fqdn-name || true
     printf "Debug: $RET\n"
     MDA_HOSTNAME="${RET:-localhost}"
 
 	echo "Current parameters:"
-    echo "MDA_API_KEY: $MDA_API_KEY"
     echo "MDA_CERT_FILENAME: $MDA_CERT_FILENAME"
     echo "MDA_KEY_FILENAME: $MDA_KEY_FILENAME"
     echo "MDA_DH_FILENAME: $MDA_DH_FILENAME"
@@ -59,7 +118,52 @@ read_params_debconf()
     echo "MDA_DB_USER: $MDA_DB_USER"
     echo "MDA_DB_PWD: $MDA_DB_PWD"
     echo "MDA_HOSTNAME: $MDA_HOSTNAME"
+    echo "MDA_DOVEADM_KEY: $MDA_DOVEADM_KEY"
+}
 
+insert_db()
+{
+	PGPASSWORD="$MDA_DB_PWD" psql \
+    -h "$MDA_DB_HOST" \
+    -p "$MDA_DB_PORT" \
+    -U "$MDA_DB_USER" \
+    -d "$MDA_DB_NAME" \
+    -v ON_ERROR_STOP=0 \
+    -v MDA_HOST="$MDA_HOSTNAME" \
+    -v MDA_LMTP_LISTEN="$MDA_LMTP_LISTEN" \
+    -v MDA_LMTP_PORT="$MDA_LMTP_PORT" \
+    -v MDA_LMTP_TLS="$MDA_LMTP_TLS" \
+	-v MDA_IMAP_LISTEN="$MDA_IMAP_LISTEN" \
+    -v MDA_IMAP_PORT="$MDA_IMAP_PORT" \
+	-v MDA_IMAPS_LISTEN="$MDA_IMAPS_LISTEN" \
+    -v MDA_IMAPS_PORT="$MDA_IMAPS_PORT" \
+    -v MDA_HTTP_PORT="$MDA_DOVEADM_PORT" \
+    -v MDA_HTTP_TLS="$MDA_DOVEADM_TLS" \
+    -v MDA_INSTANCE="$MDA_INSTANCE" 2>/dev/null <<'EOF'
+INSERT INTO public."MdaServers" (
+    "Name", "LmtpIp", "LmtpPort", "LmtpTls",
+    "ImapIp", "ImapPort", "ImapsIp", "ImapsPort",
+    "HttpIp", "HttpPort", "HttpTls", "IsDefault", "MdaGroupId", "Node"
+)
+SELECT
+    :MDA_HOST,
+    :MDA_LMTP_LISTEN,
+    :MDA_LMTP_PORT,
+    CASE WHEN :MDA_LMTP_TLS = 'yes' THEN true ELSE false END,
+	CASE WHEN :MDA_IMAP_LISTEN = '0.0.0.0' THEN :MDA_HOST ELSE :MDA_IMAP_LISTEN END,
+    :MDA_IMAP_PORT,
+    CASE WHEN :MDA_IMAPS_LISTEN = '0.0.0.0' THEN :MDA_HOST ELSE :MDA_IMAPS_LISTEN END,
+    :MDA_IMAPS_PORT,
+    :MDA_HOST,
+    :MDA_HTTP_PORT,
+    CASE WHEN :MDA_HTTP_TLS = 'yes' THEN true ELSE false END,
+    true,
+    1,
+    :MDA_INSTANCE
+WHERE NOT EXISTS (
+    SELECT 1 FROM public."MdaServers" WHERE "Node" = :MDA_INSTANCE
+);
+EOF | true
 }
 
 save_params_debconf()
@@ -68,7 +172,25 @@ save_params_debconf()
     db_set r7mdaserver/mda-ssl-cert "$MDA_CERT_FILENAME"
     db_set r7mdaserver/mda-ssl-key "$MDA_KEY_FILENAME"
     db_set r7mdaserver/mda-dh-key "$MDA_DH_FILENAME"
-    db_set r7mdaserver/mda-doveadm-key "$MDA_API_KEY"
+
+    db_set r7mdaserver/mda-nodename "$MDA_INSTANCE"
+    db_set r7mdaserver/mda-doveadm-key "$MDA_DOVEADM_KEY"
+    db_set r7mdaserver/mda-doveadm-tls "$MDA_DOVEADM_TLS"
+
+    db_set r7mdaserver/mda-auth-listen "$MDA_AUTH_LISTEN"
+    db_set r7mdaserver/mda-auth-port "$MDA_AUTH_PORT"
+    db_set r7mdaserver/mda-auth-tls "$MDA_AUTH_TLS"
+    db_set r7mdaserver/mda-auth-trust-net "$MDA_AUTH_TRUST_NET"
+
+    db_set r7mdaserver/mda-lmtp-listen "$MDA_LMTP_LISTEN"
+    db_set r7mdaserver/mda-lmtp-port "$MDA_LMTP_PORT"
+    db_set r7mdaserver/mda-lmtp-tls "$MDA_LMTP_TLS"
+
+    db_set r7mdaserver/mda-imap-listen "$MDA_IMAP_LISTEN"
+    db_set r7mdaserver/mda-imap-port "$MDA_IMAP_PORT"    
+	db_set r7mdaserver/mda-imaps-listen "$MDA_IMAPS_LISTEN"
+    db_set r7mdaserver/mda-imaps-port "$MDA_IMAPS_PORT"
+    db_set r7mdaserver/mda-imaps-tls "$MDA_IMAPS_TLS"
 }
 
 conf_cert()
@@ -136,11 +258,38 @@ conf_db()
 
 conf_api()
 {
-#	MDA_CONF_API=$MDA_CONF_DIR/conf.d/20-doveadm.conf
 	echo "Configuring Dovecot HTTPAPI Settings"
-	MDA_INSTANCE=$(cat /proc/sys/kernel/random/uuid)
-	sed -i "s#{{ MDA_DOVEADM_KEY }}#$MDA_API_KEY#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_DOVEADM_KEY }}#$MDA_DOVEADM_KEY#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_DOVEADM_PORT }}#$MDA_DOVEADM_PORT#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_DOVEADM_TLS }}#$MDA_DOVEADM_TLS#g" $MDA_CONF_ENV
 	sed -i "s#{{ MDA_INSTANCE }}#$MDA_INSTANCE#g" $MDA_CONF_ENV
+}
+
+conf_lmtp()
+{
+	echo "Configuring Dovecot LMTP Settings"
+	sed -i "s#{{ MDA_LMTP_LISTEN }}#$MDA_LMTP_LISTEN#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_LMTP_PORT }}#$MDA_LMTP_PORT#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_LMTP_TLS }}#$MDA_LMTP_TLS#g" $MDA_CONF_ENV
+}
+
+conf_imap()
+{
+	echo "Configuring Dovecot IMAP Settings"
+	sed -i "s#{{ MDA_IMAP_LISTEN }}#$MDA_IMAP_LISTEN#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_IMAP_PORT }}#$MDA_IMAP_PORT#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_IMAPS_LISTEN }}#$MDA_IMAPS_LISTEN#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_IMAPS_PORT }}#$MDA_IMAPS_PORT#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_IMAPS_TLS }}#$MDA_IMAPS_TLS#g" $MDA_CONF_ENV
+}
+
+conf_auth()
+{
+	echo "Configuring Dovecot AUTH Settings"
+	sed -i "s#{{ MDA_AUTH_LISTEN }}#$MDA_AUTH_LISTEN#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_AUTH_PORT }}#$MDA_AUTH_PORT#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_AUTH_TLS }}#$MDA_AUTH_TLS#g" $MDA_CONF_ENV
+	sed -i "s#{{ MDA_AUTH_TRUST_NET }}#$MDA_AUTH_TRUST_NET#g" $MDA_CONF_ENV
 }
 
 if [ "$1" = "configure" ]; then
@@ -208,6 +357,10 @@ if [ "$1" = "configure" ]; then
 	conf_cert
 	conf_db
 	conf_api
+	conf_lmtp
+	conf_imap
+	conf_auth
+	insert_db
 	save_params_debconf
 
   	if ! dpkg-statoverride --list $MDA_CONF_DIR/private >/dev/null; then
