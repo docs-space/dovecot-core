@@ -123,7 +123,7 @@ read_params_debconf()
 
 insert_db()
 {
-    (
+#    (
         PGPASSWORD="$MDA_DB_PWD" psql \
             -h "$MDA_DB_HOST" \
             -p "$MDA_DB_PORT" \
@@ -165,7 +165,7 @@ WHERE NOT EXISTS (
     SELECT 1 FROM public."MdaServers" WHERE "Node" = :MDA_INSTANCE
 );
 EOF
-    ) | true
+#    ) | true
 }
 
 save_params_debconf()
