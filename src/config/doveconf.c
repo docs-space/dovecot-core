@@ -1180,6 +1180,11 @@ int main(int argc, char *argv[])
 			   Do this only if the environment exists, because
 			   lib-master doesn't set it if it doesn't want the
 			   environment to be cleaned (e.g. -k parameter). */
+			const char *environment =
+				config_parsed_get_setting(config,
+					"master_service", "environment");
+			if (environment != NULL && *environment != '\0')
+				master_service_import_environment(environment);
 			master_service_import_environment(import_environment);
 			master_service_env_clean();
 		}

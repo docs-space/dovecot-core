@@ -620,11 +620,15 @@ master_service_settings_read_int(struct master_service *service,
 	if (service->set->shutdown_clients)
 		master_service_set_die_with_master(master_service, TRUE);
 
+	/* MDA_* and other custom variables from environment { } must be in
+	   the process environment before any further settings_get() calls
+	   expand %{env:...} (e.g. service inet_listener listen=). */
+	const char *environment =
+		master_service_get_environment_keyvals(service);
+	if (*environment != '\0')
+		master_service_import_environment(environment);
+
 	if (import_environment_missing) {
-		const char *environment =
-			master_service_get_environment_keyvals(service);
-		if (*environment != '\0')
-			master_service_import_environment(environment);
 		const char *import_environment =
 			master_service_get_import_environment_keyvals(service);
 		master_service_import_environment(import_environment);
