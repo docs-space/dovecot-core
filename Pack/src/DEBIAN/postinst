@@ -123,13 +123,14 @@ read_params_debconf()
 
 insert_db()
 {
+	echo "Add MDA Server to DB"
 #    (
         PGPASSWORD="$MDA_DB_PWD" psql \
             -h "$MDA_DB_HOST" \
             -p "$MDA_DB_PORT" \
             -U "$MDA_DB_USER" \
             -d "$MDA_DB_NAME" \
-            -v ON_ERROR_STOP=0 \
+            -v ON_ERROR_STOP=1 \
             -v MDA_HOST="$MDA_HOSTNAME" \
             -v MDA_LMTP_LISTEN="$MDA_LMTP_LISTEN" \
             -v MDA_LMTP_PORT="$MDA_LMTP_PORT" \
@@ -166,6 +167,7 @@ WHERE NOT EXISTS (
 );
 EOF
 #    ) | true
+	echo "Adding MDA Server to DB successfully"
 }
 
 save_params_debconf()
