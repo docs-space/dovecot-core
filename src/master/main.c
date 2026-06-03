@@ -522,13 +522,14 @@ static const struct master_settings *master_settings_read(void)
 	/* settings_get(master) expands %{env:MDA_*} — import before that */
 	const char *environment =
 		master_service_get_environment_keyvals(master_service);
+	i_info("master config init: before master settings_get "
+	       "(environment_block_len=%u)", (unsigned)strlen(environment));
 	if (*environment != '\0')
 		master_service_import_environment(environment);
 	const char *import_environment =
 		master_service_get_import_environment_keyvals(master_service);
 	if (*import_environment != '\0')
 		master_service_import_environment(import_environment);
-
 	return settings_get_or_fatal(master_service_get_event(master_service),
 				     &master_setting_parser_info);
 }
@@ -957,12 +958,22 @@ int main(int argc, char *argv[])
 
 	const char *environment =
 		master_service_get_environment_keyvals(master_service);
+	i_info("master config init: before services_create "
+	       "(environment_block_len=%u)", (unsigned)strlen(environment));
 	if (*environment != '\0')
 		master_service_import_environment(environment);
 	const char *import_environment =
 		master_service_get_import_environment_keyvals(master_service);
 	master_service_import_environment(import_environment);
+	i_debug("master config init: before env_clean %s=%s",
+		DOVECOT_PRESERVE_ENVS_ENV,
+		getenv(DOVECOT_PRESERVE_ENVS_ENV) != NULL ?
+		getenv(DOVECOT_PRESERVE_ENVS_ENV) : "(unset)");
 	master_service_env_clean();
+	i_debug("master config init: after env_clean %s=%s",
+		DOVECOT_PRESERVE_ENVS_ENV,
+		getenv(DOVECOT_PRESERVE_ENVS_ENV) != NULL ?
+		getenv(DOVECOT_PRESERVE_ENVS_ENV) : "(unset)");
 
 	/* create service structures from settings. if there are any errors in
 	   service configuration we'll catch it here. */

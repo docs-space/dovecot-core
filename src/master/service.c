@@ -14,6 +14,7 @@
 #include "service-anvil.h"
 #include "service-process.h"
 #include "service-monitor.h"
+#include "master-settings.h"
 
 #include <unistd.h>
 #include <signal.h>
@@ -152,6 +153,9 @@ service_create_inet_listeners(struct service *service,
 		if (set->ssl && ssl_disabled)
 			continue;
 
+		master_config_init_debug_listen("resolve_ip",
+						service->set->name, set->name,
+						address);
 		if (resolve_ip(address, &ips, &ips_count, error_r) < 0)
 			return -1;
 

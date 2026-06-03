@@ -1041,8 +1041,13 @@ static void master_service_import_environment_real(const char *import_environmen
 	const char *error;
 	string_t *expanded;
 
-	if (*import_environment == '\0')
+	if (*import_environment == '\0') {
+		i_debug("master config init: import environment block is empty");
 		return;
+	}
+
+	i_debug("master config init: importing environment "
+		"(%u tabescaped bytes)", (unsigned)strlen(import_environment));
 
 	t_array_init(&keys, 8);
 	/* preserve existing DOVECOT_PRESERVE_ENVS */
@@ -1070,7 +1075,11 @@ static void master_service_import_environment_real(const char *import_environmen
 			if (str_len(expanded) > 0) {
 				value = str_c(expanded);
 				env_put(key, value);
+				i_debug("master config init: setenv %s=%s", key, value);
 				str_clear(expanded);
+			} else {
+				i_warning("master config init: setenv %s skipped "
+					  "(expanded empty, raw=%s)", key, value);
 			}
 		}
 		array_push_back(&keys, &key);
