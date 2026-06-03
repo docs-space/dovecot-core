@@ -108,6 +108,9 @@ int config_parse_file(const char *path, enum config_parse_flags flags,
 		      struct config_parsed **config_r,
 		      const char **error_r)
 	ATTR_NULL(3);
+/* Expand and apply master_service environment { } before settings that use
+   %{env:...} are validated (doveconf and config socket daemon). */
+void config_apply_early_environment(struct config_parsed *config);
 bool config_parsed_get_version(const struct config_parsed *config,
 			       const char **version_r);
 /* Return all errors found while parsing the config file. */

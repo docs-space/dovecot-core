@@ -12,6 +12,7 @@
 #include "version.h"
 #include "settings.h"
 #include "service-settings.h"
+#include "master-service.h"
 #include "master-service-settings.h"
 #include "all-settings.h"
 #include "old-set-parser.h"
@@ -2725,9 +2726,12 @@ config_parse_finish(struct config_parser_context *ctx,
 
 	if (ret < 0)
 		;
-	else if ((ret = config_all_parsers_check(ctx, new_config, flags, &error)) < 0) {
-		*error_r = t_strdup_printf("Error in configuration file %s: %s",
-					   ctx->path, error);
+	else {
+		config_apply_early_environment(new_config);
+		if ((ret = config_all_parsers_check(ctx, new_config, flags, &error)) < 0) {
+			*error_r = t_strdup_printf("Error in configuration file %s: %s",
+						   ctx->path, error);
+		}
 	}
 
 	i_zero(&ctx->all_keys);
@@ -3830,6 +3834,16 @@ config_parsed_get_setting_full(const struct config_parsed *config,
 	if (!config_export_type(str, value, def->type))
 		i_unreached();
 	return str_c(str);
+}
+
+void config_apply_early_environment(struct config_parsed *config)
+{
+	const char *environment =
+		config_parsed_get_setting(config, "master_service",
+					  "environment");
+
+	if (environment != NULL && *environment != '\0')
+		master_service_import_environment(environment);
 }
 
 const char *

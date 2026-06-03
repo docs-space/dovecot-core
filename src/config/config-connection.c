@@ -62,6 +62,8 @@ static int config_global_reload(const char **error_r)
 			      NULL, &new_config, error_r) <= 0)
 		return -1;
 
+	config_apply_early_environment(new_config);
+
 	config_parsed_free(&global_config);
 	global_config = new_config;
 	i_close_fd(&global_config_fd);

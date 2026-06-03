@@ -1167,14 +1167,7 @@ int main(int argc, char *argv[])
 	    config == NULL)
 		i_fatal("%s", error);
 
-	/* Apply environment before expanding %{env:...} in settings. */
-	{
-		const char *environment =
-			config_parsed_get_setting(config, "master_service",
-						  "environment");
-		if (environment != NULL && *environment != '\0')
-			master_service_import_environment(environment);
-	}
+	config_apply_early_environment(config);
 
 	if (dump_full && exec_args != NULL) {
 		int temp_fd = config_dump_full(config,
