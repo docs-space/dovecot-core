@@ -2605,6 +2605,8 @@ static int config_expand_value(struct config_parser_context *ctx,
 		if (strstr(*value + 1, "%{") == NULL)
 			return 0;
 		expand_str = *value + 1;
+		i_debug("master config init: expanding deferred %s=%s",
+			key, expand_str);
 	} else {
 		i_assert((*value)[0] == CONFIG_VALUE_PREFIX_SET_UNEXPANDED);
 		expand_str = *value + 1;
@@ -3852,6 +3854,9 @@ void config_apply_early_environment(struct config_parsed *config)
 		config_parsed_get_setting(config, "master_service",
 					  "environment");
 
+	i_debug("master config init: config_apply_early_environment "
+		"(len=%u)", environment != NULL ?
+		(unsigned)strlen(environment) : 0);
 	if (environment != NULL && *environment != '\0')
 		master_service_import_environment(environment);
 }
