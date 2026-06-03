@@ -944,6 +944,10 @@ int main(int argc, char *argv[])
 	master_settings_do_fixes(set);
 	fatal_log_check(set);
 
+	const char *environment =
+		master_service_get_environment_keyvals(master_service);
+	if (*environment != '\0')
+		master_service_import_environment(environment);
 	const char *import_environment =
 		master_service_get_import_environment_keyvals(master_service);
 	master_service_import_environment(import_environment);

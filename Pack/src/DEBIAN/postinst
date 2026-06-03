@@ -239,59 +239,42 @@ conf_cert()
     chmod 600 "$MDA_KEY_FILENAME"
 	chmod 600 "$MDA_DH_FILENAME"
 
-	echo "Configuring Dovecot SSL Settings"
-	sed -i "s#{{ MDA_SSL_CERT }}#$MDA_CERT_FILENAME#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_SSL_KEY }}#$MDA_KEY_FILENAME#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DH_KEY }}#$MDA_DH_FILENAME#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_HOSTNAME }}#$MDA_HOSTNAME#g" $MDA_CONF_ENV
 }
 
-conf_db()
+# MDA defaults live in environment { }; postinst substitutes {{ }} there only.
+apply_config_placeholders()
 {
-#	MDA_CONF_DB=$MDA_CONF_DIR/conf.d/10-pgsql.conf
-	echo "Configuring Dovecot Database Settings"
-	sed -i "s#{{ MDA_DB_HOST }}#$MDA_DB_HOST#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DB_PORT }}#$MDA_DB_PORT#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DB_NAME }}#$MDA_DB_NAME#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DB_USER }}#$MDA_DB_USER#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DB_PWD }}#$MDA_DB_PWD#g" $MDA_CONF_ENV
-}
-
-
-conf_api()
-{
-	echo "Configuring Dovecot HTTPAPI Settings"
-	sed -i "s#{{ MDA_DOVEADM_KEY }}#$MDA_DOVEADM_KEY#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DOVEADM_PORT }}#$MDA_DOVEADM_PORT#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_DOVEADM_TLS }}#$MDA_DOVEADM_TLS#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_INSTANCE }}#$MDA_INSTANCE#g" $MDA_CONF_ENV
-}
-
-conf_lmtp()
-{
-	echo "Configuring Dovecot LMTP Settings"
-	sed -i "s#{{ MDA_LMTP_LISTEN }}#$MDA_LMTP_LISTEN#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_LMTP_PORT }}#$MDA_LMTP_PORT#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_LMTP_TLS }}#$MDA_LMTP_TLS#g" $MDA_CONF_ENV
-}
-
-conf_imap()
-{
-	echo "Configuring Dovecot IMAP Settings"
-	sed -i "s#{{ MDA_IMAP_LISTEN }}#$MDA_IMAP_LISTEN#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_IMAP_PORT }}#$MDA_IMAP_PORT#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_IMAPS_LISTEN }}#$MDA_IMAPS_LISTEN#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_IMAPS_PORT }}#$MDA_IMAPS_PORT#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_IMAPS_TLS }}#$MDA_IMAPS_TLS#g" $MDA_CONF_ENV
-}
-
-conf_auth()
-{
-	echo "Configuring Dovecot AUTH Settings"
-	sed -i "s#{{ MDA_AUTH_LISTEN }}#$MDA_AUTH_LISTEN#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_AUTH_PORT }}#$MDA_AUTH_PORT#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_AUTH_TLS }}#$MDA_AUTH_TLS#g" $MDA_CONF_ENV
-	sed -i "s#{{ MDA_AUTH_TRUST_NET }}#$MDA_AUTH_TRUST_NET#g" $MDA_CONF_ENV
+	echo "Applying MDA placeholders to $MDA_CONF_ENV..."
+	for CONF in "$MDA_CONF_ENV"; do
+		[ -f "$CONF" ] || continue
+		sed -i \
+			-e "s#{{ MDA_SSL_CERT }}#$MDA_CERT_FILENAME#g" \
+			-e "s#{{ MDA_SSL_KEY }}#$MDA_KEY_FILENAME#g" \
+			-e "s#{{ MDA_DH_KEY }}#$MDA_DH_FILENAME#g" \
+			-e "s#{{ MDA_HOSTNAME }}#$MDA_HOSTNAME#g" \
+			-e "s#{{ MDA_DB_HOST }}#$MDA_DB_HOST#g" \
+			-e "s#{{ MDA_DB_PORT }}#$MDA_DB_PORT#g" \
+			-e "s#{{ MDA_DB_NAME }}#$MDA_DB_NAME#g" \
+			-e "s#{{ MDA_DB_USER }}#$MDA_DB_USER#g" \
+			-e "s#{{ MDA_DB_PWD }}#$MDA_DB_PWD#g" \
+			-e "s#{{ MDA_DOVEADM_KEY }}#$MDA_DOVEADM_KEY#g" \
+			-e "s#{{ MDA_DOVEADM_PORT }}#$MDA_DOVEADM_PORT#g" \
+			-e "s#{{ MDA_DOVEADM_TLS }}#$MDA_DOVEADM_TLS#g" \
+			-e "s#{{ MDA_INSTANCE }}#$MDA_INSTANCE#g" \
+			-e "s#{{ MDA_LMTP_LISTEN }}#$MDA_LMTP_LISTEN#g" \
+			-e "s#{{ MDA_LMTP_PORT }}#$MDA_LMTP_PORT#g" \
+			-e "s#{{ MDA_LMTP_TLS }}#$MDA_LMTP_TLS#g" \
+			-e "s#{{ MDA_IMAP_LISTEN }}#$MDA_IMAP_LISTEN#g" \
+			-e "s#{{ MDA_IMAP_PORT }}#$MDA_IMAP_PORT#g" \
+			-e "s#{{ MDA_IMAPS_LISTEN }}#$MDA_IMAPS_LISTEN#g" \
+			-e "s#{{ MDA_IMAPS_PORT }}#$MDA_IMAPS_PORT#g" \
+			-e "s#{{ MDA_IMAPS_TLS }}#$MDA_IMAPS_TLS#g" \
+			-e "s#{{ MDA_AUTH_LISTEN }}#$MDA_AUTH_LISTEN#g" \
+			-e "s#{{ MDA_AUTH_PORT }}#$MDA_AUTH_PORT#g" \
+			-e "s#{{ MDA_AUTH_TLS }}#$MDA_AUTH_TLS#g" \
+			-e "s#{{ MDA_AUTH_TRUST_NET }}#$MDA_AUTH_TRUST_NET#g" \
+			"$CONF"
+	done
 }
 
 if [ "$1" = "configure" ]; then
@@ -357,11 +340,7 @@ if [ "$1" = "configure" ]; then
 	
 	read_params_debconf
 	conf_cert
-	conf_db
-	conf_api
-	conf_lmtp
-	conf_imap
-	conf_auth
+	apply_config_placeholders
 	insert_db
 	save_params_debconf
 

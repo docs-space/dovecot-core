@@ -29,6 +29,7 @@ struct master_service_settings {
 	const char *stats_writer_socket_path;
 	const char *auth_master_socket_path;
 	const char *dovecot_storage_version;
+	ARRAY_TYPE(const_string) environment;
 	ARRAY_TYPE(const_string) import_environment;
 	bool version_ignore;
 	bool shutdown_clients;
@@ -93,8 +94,11 @@ int master_service_settings_read_simple(struct master_service *service,
 
 const struct master_service_settings *
 master_service_get_service_settings(struct master_service *service);
-/* Return the import_environment setting as a space-separated concatenated
-   string of key=value pairs. The values might contain %variables to expand. */
+/* Return the environment / import_environment setting as a space-separated
+   concatenated string of key=value pairs. The values might contain %variables
+   to expand. */
+const char *
+master_service_get_environment_keyvals(struct master_service *service);
 const char *
 master_service_get_import_environment_keyvals(struct master_service *service);
 

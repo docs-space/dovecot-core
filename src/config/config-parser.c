@@ -999,6 +999,7 @@ config_apply_exact_line(struct config_parser_context *ctx,
 	/* FIXME: These don't work because config_parsed_get_setting() doesn't
 	   expand groups. Maybe not worth the effort to fix it? */
 	if ((strcmp(lookup_key, "import_environment") == 0 ||
+	     strcmp(lookup_key, "environment") == 0 ||
 	     strcmp(lookup_key, "base_dir") == 0 ||
 	     strcmp(lookup_key, "dovecot_storage_version") == 0) &&
 	    config_filter_has_include_group(&ctx->cur_section->filter_parser->filter)) {
@@ -3801,11 +3802,12 @@ config_parsed_get_setting_full(const struct config_parsed *config,
 		*change_counter_r = l[info_idx].change_counters[key_idx];
 		return NULL;
 	}
-	/* Custom handler for the import_environment strlist setting. The
-	   calling function expects a string of key=value pairs. See
-	   master_service_get_import_environment_keyvals() for the original
+	/* Custom handler for the environment / import_environment strlist
+	   settings. The calling function expects a string of key=value pairs.
+	   See master_service_get_*_environment_keyvals() for the original
 	   implementation. */
-	if (strcmp(key, "import_environment") == 0) {
+	if (strcmp(key, "import_environment") == 0 ||
+	    strcmp(key, "environment") == 0) {
 		string_t *keyvals = t_str_new(64);
 		const ARRAY_TYPE(const_string) *strlist_set =
 			l[info_idx].settings[key_idx].list.prefixed_values;

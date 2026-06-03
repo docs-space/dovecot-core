@@ -63,6 +63,8 @@ static const struct setting_define master_service_setting_defines[] = {
 	DEF(STR, haproxy_trusted_networks),
 	DEF(TIME, haproxy_timeout),
 
+	{ .type = SET_STRLIST, .key = "environment",
+	  .offset = offsetof(struct master_service_settings, environment) },
 	{ .type = SET_STRLIST, .key = "import_environment",
 	  .offset = offsetof(struct master_service_settings, import_environment) },
 
@@ -81,6 +83,7 @@ static const struct master_service_settings master_service_default_settings = {
 	.log_core_filter = "",
 	.process_shutdown_filter = "",
 	.syslog_facility = "mail",
+	.environment = ARRAY_INIT,
 	.import_environment = ARRAY_INIT,
 	.stats_writer_socket_path = "stats-writer",
 	.auth_master_socket_path = "auth-master",
@@ -618,6 +621,10 @@ master_service_settings_read_int(struct master_service *service,
 		master_service_set_die_with_master(master_service, TRUE);
 
 	if (import_environment_missing) {
+		const char *environment =
+			master_service_get_environment_keyvals(service);
+		if (*environment != '\0')
+			master_service_import_environment(environment);
 		const char *import_environment =
 			master_service_get_import_environment_keyvals(service);
 		master_service_import_environment(import_environment);
@@ -653,15 +660,15 @@ master_service_get_service_settings(struct master_service *service)
 	return service->set;
 }
 
-const char *
-master_service_get_import_environment_keyvals(struct master_service *service)
+static const char *
+master_service_get_strlist_keyvals(ARRAY_TYPE(const_string) *arr)
 {
-	ARRAY_TYPE(const_string) arr = service->set->import_environment;
-	unsigned int len = array_count(&arr);
+	unsigned int len = array_count(arr);
 	string_t *keyvals = t_str_new(64);
+
 	for (unsigned int i = 0; i < len; i += 2) {
-		const char *const *key = array_idx(&arr, i);
-		const char *const *val = array_idx(&arr, i + 1);
+		const char *const *key = array_idx(arr, i);
+		const char *const *val = array_idx(arr, i + 1);
 		str_append_tabescaped(keyvals, *key);
 		str_append_c(keyvals, '=');
 		str_append_tabescaped(keyvals, *val);
@@ -670,6 +677,18 @@ master_service_get_import_environment_keyvals(struct master_service *service)
 			str_append_c(keyvals, '\t');
 	}
 	return str_c(keyvals);
+}
+
+const char *
+master_service_get_environment_keyvals(struct master_service *service)
+{
+	return master_service_get_strlist_keyvals(&service->set->environment);
+}
+
+const char *
+master_service_get_import_environment_keyvals(struct master_service *service)
+{
+	return master_service_get_strlist_keyvals(&service->set->import_environment);
 }
 
 const char *

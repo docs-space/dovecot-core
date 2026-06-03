@@ -96,7 +96,8 @@ EXTRA_DIST = \
 	settings-get.pl
 
 test_programs = \
-	test-config-parser
+	test-config-parser \
+	test-environment-early
 
 test_libs = \
 	$(noinst_LTLIBRARIES) \
@@ -106,3 +107,8 @@ test_config_parser_CFLAGS = $(AM_CFLAGS)
 test_config_parser_SOURCES = test-config-parser.c
 test_config_parser_LDADD = $(test_libs)
 test_config_parser_DEPENDENCIES = $(LIBDOVECOT_DEPS) $(noinst_LTLIBRARIES)
+
+test_environment_early_CFLAGS = $(AM_CFLAGS)
+test_environment_early_SOURCES = test-environment-early.c
+test_environment_early_LDADD = $(test_libs)
+test_environment_early_DEPENDENCIES = $(LIBDOVECOT_DEPS) $(noinst_LTLIBRARIES)
