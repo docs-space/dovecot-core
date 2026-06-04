@@ -20,6 +20,7 @@
 #include "config-dump-full.h"
 #include "config-parser-private.h"
 #include "strfuncs.h"
+#include "var-expand.h"
 
 #include "default-settings-import.h"
 
@@ -2693,6 +2694,22 @@ static int config_parse_expand_values(struct config_parser_context *ctx)
 }
 
 static int
+config_expand_deferred_path(struct config_parser_context *ctx,
+			    const char *path, const char **path_r)
+{
+	string_t *str = t_str_new(128);
+	const char *error;
+
+	if (var_expand(str, path, NULL, &error) < 0) {
+		ctx->error = p_strdup_printf(ctx->pool,
+			"%s: %s", path, error);
+		return -1;
+	}
+	*path_r = p_strdup(ctx->pool, str_c(str));
+	return 0;
+}
+
+static int
 config_module_parser_embed_files(struct config_parser_context *ctx,
 				 struct config_filter_parser *filter_parser,
 				 struct config_module_parser *p)
@@ -2716,13 +2733,17 @@ config_module_parser_embed_files(struct config_parser_context *ctx,
 		if (strchr(path, '\n') != NULL)
 			continue;
 
-		if (strstr(path, "%{") != NULL) {
-			if (config_expand_value(ctx, filter_parser, key,
-						valuep) < 0)
+		if (strstr(path, "%") != NULL) {
+			const char *expanded_path;
+
+			if (config_expand_deferred_path(ctx, path,
+							&expanded_path) < 0)
 				return -1;
-			path = set_str_expanded(set);
+			*valuep = p_strdup_printf(ctx->pool, "%c%s",
+				CONFIG_VALUE_PREFIX_EXPANDED, expanded_path);
+			path = expanded_path;
 		}
-		if (strstr(path, "%{") != NULL) {
+		if (strstr(path, "%") != NULL) {
 			ctx->error = p_strdup_printf(ctx->pool,
 				"Could not expand %s file path: %s", key, path);
 			return -1;
