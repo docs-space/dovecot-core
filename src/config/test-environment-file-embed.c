@@ -1,9 +1,11 @@
 /* Copyright (c) 2026 Dovecot authors, see the included COPYING file */
 
 #include "lib.h"
+#include "str.h"
 #include "env-util.h"
 #include "ostream.h"
 #include "service-settings.h"
+#include "settings-parser.h"
 #include "master-service.h"
 #include "master-service-settings.h"
 #include "ssl-settings.h"
