@@ -6,7 +6,7 @@
 #include "service-settings.h"
 #include "master-service.h"
 #include "master-service-settings.h"
-#include "iostream-ssl.h"
+#include "ssl-settings.h"
 #include "config-parser.h"
 #include "config-parser-private.h"
 #include "dovecot-version.h"
