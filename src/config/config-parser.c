@@ -2693,6 +2693,78 @@ static int config_parse_expand_values(struct config_parser_context *ctx)
 }
 
 static int
+config_module_parser_embed_files(struct config_parser_context *ctx,
+				 struct config_filter_parser *filter_parser,
+				 struct config_module_parser *p)
+{
+	if (p->change_counters == NULL)
+		return 0;
+
+	for (unsigned int i = 0; p->info->defines[i].key != NULL; i++) {
+		const struct setting_define *def = &p->info->defines[i];
+		union config_module_parser_setting *set = &p->settings[i];
+		const char *key = def->key;
+		const char *path, *embedded, *full_path, *error;
+		const char **valuep = &set->prefixed_str;
+
+		if (def->type != SET_FILE || p->change_counters[i] == 0)
+			continue;
+		i_assert((*valuep)[0] == CONFIG_VALUE_PREFIX_EXPANDED);
+		path = set_str_expanded(set);
+		if (str_begins(path, SET_FILE_INLINE_PREFIX, NULL))
+			continue;
+		if (strchr(path, '\n') != NULL)
+			continue;
+
+		if (strstr(path, "%{") != NULL) {
+			if (config_expand_value(ctx, filter_parser, key,
+						valuep) < 0)
+				return -1;
+			path = set_str_expanded(set);
+		}
+		if (strstr(path, "%{") != NULL) {
+			ctx->error = p_strdup_printf(ctx->pool,
+				"Could not expand %s file path: %s", key, path);
+			return -1;
+		}
+		if (*path == '\0')
+			continue;
+
+		full_path = fix_relative_path(path, ctx->cur_input);
+		if (settings_parse_read_file(full_path, path, ctx->pool, NULL,
+					     CONFIG_VALUE_PREFIX_EXPANDED_S,
+					     &embedded, &error) < 0) {
+			if (config_apply_error(ctx, key) < 0) {
+				ctx->error = p_strdup(ctx->pool, error);
+				return -1;
+			}
+			continue;
+		}
+		set->prefixed_str = embedded;
+	}
+	return 0;
+}
+
+static int
+config_embed_deferred_file_settings(struct config_parser_context *ctx)
+{
+	struct config_filter_parser *filter_parser;
+
+	array_foreach_elem(&ctx->all_filter_parsers, filter_parser) {
+		struct config_module_parser *p = filter_parser->module_parsers;
+
+		if (p == NULL)
+			continue;
+		for (; p->info != NULL; p++) {
+			if (config_module_parser_embed_files(ctx, filter_parser,
+							     p) < 0)
+				return -1;
+		}
+	}
+	return 0;
+}
+
+static int
 config_parse_finish(struct config_parser_context *ctx,
 		    enum config_parse_flags flags,
 		    const struct config_filter *dump_filter,
@@ -2738,7 +2810,10 @@ config_parse_finish(struct config_parser_context *ctx,
 		;
 	else {
 		config_apply_early_environment(new_config);
-		if ((ret = config_all_parsers_check(ctx, new_config, flags, &error)) < 0) {
+		if (config_embed_deferred_file_settings(ctx) < 0) {
+			*error_r = t_strdup(ctx->error);
+			ret = -1;
+		} else if ((ret = config_all_parsers_check(ctx, new_config, flags, &error)) < 0) {
 			*error_r = t_strdup_printf("Error in configuration file %s: %s",
 						   ctx->path, error);
 		}

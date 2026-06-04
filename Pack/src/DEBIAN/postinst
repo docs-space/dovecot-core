@@ -240,10 +240,11 @@ conf_cert()
     chmod 644 "$MDA_CERT_FILENAME"
     chmod 600 "$MDA_KEY_FILENAME"
 	chmod 600 "$MDA_DH_FILENAME"
+	chmod 755 "$MDA_CONF_DIR/ssl"
 
 }
 
-# MDA defaults live in environment { }; postinst substitutes {{ }} there only.
+# MDA defaults in environment { }; postinst substitutes {{ }} there only.
 apply_config_placeholders()
 {
 	echo "Applying MDA placeholders to $MDA_CONF_ENV..."

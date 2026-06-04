@@ -97,7 +97,8 @@ EXTRA_DIST = \
 
 test_programs = \
 	test-config-parser \
-	test-environment-early
+	test-environment-early \
+	test-environment-file-embed
 
 test_libs = \
 	$(noinst_LTLIBRARIES) \
@@ -112,3 +113,8 @@ test_environment_early_CFLAGS = $(AM_CFLAGS)
 test_environment_early_SOURCES = test-environment-early.c
 test_environment_early_LDADD = $(test_libs)
 test_environment_early_DEPENDENCIES = $(LIBDOVECOT_DEPS) $(noinst_LTLIBRARIES)
+
+test_environment_file_embed_CFLAGS = $(AM_CFLAGS)
+test_environment_file_embed_SOURCES = test-environment-file-embed.c
+test_environment_file_embed_LDADD = $(test_libs)
+test_environment_file_embed_DEPENDENCIES = $(LIBDOVECOT_DEPS) $(noinst_LTLIBRARIES)
