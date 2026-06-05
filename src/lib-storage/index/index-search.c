@@ -10,6 +10,7 @@
 #include "unichar.h"
 #include "imap-match.h"
 #include "master-service.h"
+#include "master-service-settings.h"
 #include "message-address.h"
 #include "message-date.h"
 #include "message-search.h"
