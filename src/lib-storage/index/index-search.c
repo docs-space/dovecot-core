@@ -130,6 +130,20 @@ static void search_init_arg(struct mail_search_arg *arg,
 			ctx->have_nonmatch_always = TRUE;
 		}
 		break;
+	case SEARCH_INSTANCENAME: {
+		const struct master_service_settings *set =
+			master_service_get_service_settings(master_service);
+		const char *instance_name = set != NULL ? set->instance_name : "";
+
+		match = strcmp(instance_name, arg->value.str) == 0;
+		if (match != arg->match_not)
+			arg->match_always = TRUE;
+		else {
+			arg->nonmatch_always = TRUE;
+			ctx->have_nonmatch_always = TRUE;
+		}
+		break;
+	}
 	case SEARCH_MAILBOX:
 	case SEARCH_MAILBOX_GLOB:
 		ctx->have_mailbox_args = TRUE;
@@ -1472,6 +1486,7 @@ static bool search_arg_is_static(struct mail_search_arg *arg)
 	case SEARCH_MAILBOX:
 	case SEARCH_MAILBOX_GUID:
 	case SEARCH_MAILBOX_GLOB:
+	case SEARCH_INSTANCENAME:
 	case SEARCH_REAL_UID:
 	case SEARCH_MIMEPART:
 		return TRUE;

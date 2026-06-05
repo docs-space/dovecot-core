@@ -69,6 +69,10 @@ mail_search_arg_to_cmdline(string_t *dest, const struct mail_search_arg *arg)
 		str_append(dest, "MAILBOX-GUID ");
 		imap_append_astring(dest, arg->value.str, 0);
 		return;
+	case SEARCH_INSTANCENAME:
+		str_append(dest, "INSTANCENAME ");
+		imap_append_astring(dest, arg->value.str, 0);
+		return;
 	case SEARCH_ALL:
 	case SEARCH_SEQSET:
 	case SEARCH_UIDSET:

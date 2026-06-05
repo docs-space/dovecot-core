@@ -131,6 +131,7 @@ static bool imapc_search_is_fast_local(const struct mail_search_arg *args)
 		case SEARCH_MAILBOX:
 		case SEARCH_MAILBOX_GUID:
 		case SEARCH_MAILBOX_GLOB:
+		case SEARCH_INSTANCENAME:
 		case SEARCH_REAL_UID:
 			break;
 		default:
@@ -221,6 +222,7 @@ imapc_build_search_query_arg(struct imapc_mailbox *mbox,
 	case SEARCH_MAILBOX:
 	case SEARCH_MAILBOX_GUID:
 	case SEARCH_MAILBOX_GLOB:
+	case SEARCH_INSTANCENAME:
 	case SEARCH_REAL_UID:
 		/* not supported for now */
 		break;

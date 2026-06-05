@@ -313,6 +313,9 @@ bool mail_search_arg_to_imap(string_t *dest, const struct mail_search_arg *arg,
 	case SEARCH_MAILBOX_GUID:
 		*error_r = "SEARCH_MAILBOX_GUID can't be written as IMAP";
 		return FALSE;
+	case SEARCH_INSTANCENAME:
+		*error_r = "SEARCH_INSTANCENAME can't be written as IMAP";
+		return FALSE;
 	case SEARCH_MAILBOX_GLOB:
 		str_append(dest, "X-MAILBOX ");
 		imap_append_astring(dest, arg->value.str, qflags);

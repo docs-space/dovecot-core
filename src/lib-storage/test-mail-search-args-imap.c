@@ -113,6 +113,7 @@ static const struct {
 static struct mail_search_arg test_failures[] = {
 	{ .type = SEARCH_MAILBOX },
 	{ .type = SEARCH_MAILBOX_GUID },
+	{ .type = SEARCH_INSTANCENAME },
 	{ .type = SEARCH_BEFORE, .value = {
 		  .date_type = MAIL_SEARCH_DATE_TYPE_SENT, .time = 86400-1 } },
 	{ .type = SEARCH_ON, .value = {

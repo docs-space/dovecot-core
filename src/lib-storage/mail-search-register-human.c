@@ -144,6 +144,12 @@ human_search_mailbox_guid(struct mail_search_build_context *ctx)
 }
 
 static struct mail_search_arg *
+human_search_instancename(struct mail_search_build_context *ctx)
+{
+	return mail_search_build_str(ctx, SEARCH_INSTANCENAME);
+}
+
+static struct mail_search_arg *
 human_search_oldestonly(struct mail_search_build_context *ctx)
 {
 	ctx->args->stop_on_nonmatch = TRUE;
@@ -176,6 +182,7 @@ static const struct mail_search_register_arg human_register_args[] = {
 	{ "GUID", human_search_guid, 0},
 	{ "MAILBOX", human_search_mailbox, 0},
 	{ "MAILBOX-GUID", human_search_mailbox_guid, 0},
+	{ "INSTANCENAME", human_search_instancename, 0},
 	{ "OLDESTONLY", human_search_oldestonly, 0}
 };
 
