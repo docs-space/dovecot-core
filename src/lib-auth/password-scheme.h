@@ -14,6 +14,7 @@ enum password_encoding {
 struct password_generate_params {
 	const char *user;
 	unsigned int rounds;
+	const char *scheme_passphrase;
 };
 
 struct password_scheme {
@@ -136,6 +137,7 @@ int pbkdf2_verify(const char *plaintext,
 /* check which of the algorithms Blowfish, SHA-256 and SHA-512 are
    supported by the used libc's/glibc's crypt() */
 void password_scheme_register_crypt(void);
+void password_scheme_register_aes256cbc(void);
 
 #ifdef HAVE_LIBSODIUM
 void password_scheme_register_sodium(void);

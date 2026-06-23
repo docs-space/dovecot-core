@@ -259,6 +259,7 @@ void password_schemes_register_all(void)
 {
 	password_schemes_init();
 	password_scheme_register_crypt();
+	password_scheme_register_aes256cbc();
 #ifdef HAVE_LIBSODIUM
 	password_scheme_register_sodium();
 #endif
