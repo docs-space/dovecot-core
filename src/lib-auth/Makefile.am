@@ -9,7 +9,8 @@ AM_CPPFLAGS = \
 	$(LIBSODIUM_CFLAGS) \
 	-I$(top_srcdir)/src/lib \
 	-I$(top_srcdir)/src/lib-test \
-	-I$(top_srcdir)/src/lib-otp
+	-I$(top_srcdir)/src/lib-otp \
+	-I$(top_srcdir)/src/lib-dcrypt
 
 libauth_la_SOURCES = \
 	auth-digest.c \
@@ -26,12 +27,14 @@ libauth_la_SOURCES = \
 
 libauth_crypt_la_SOURCES = \
 	mycrypt.c \
+	password-scheme-aes256cbc.c \
 	password-scheme-crypt.c \
 	password-scheme-sodium.c
 
 libauth_crypt_la_LIBADD = \
 	$(LIBSODIUM_LIBS) \
-	$(CRYPT_LIBS)
+	$(CRYPT_LIBS) \
+	../lib-dcrypt/libdcrypt.la
 
 libauth_gssapi_la_SOURCES = \
 	auth-gssapi.c
@@ -75,6 +78,7 @@ test_password_scheme_LDFLAGS = -export-dynamic
 test_password_scheme_LDADD = \
 	$(test_libs) \
         ../lib-otp/libotp.la \
+        ../lib-dcrypt/libdcrypt.la \
         $(CRYPT_LIBS) \
         $(LIBSODIUM_LIBS)
 test_password_scheme_DEPENDENCIES = \

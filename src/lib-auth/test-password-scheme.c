@@ -1,6 +1,8 @@
 /* Copyright (c) 2018 Dovecot authors, see the included COPYING file */
 
 #include "test-lib.h"
+#include "buffer.h"
+#include "hex-binary.h"
 #include "password-scheme.h"
 
 #ifdef HAVE_LIBSODIUM
@@ -94,6 +96,60 @@ static void test_password_failures(void)
 	test_end();
 }
 
+static void test_password_scheme_aes256cbc(void)
+{
+	const char *scheme = "AES-256-CBC";
+	const char *passphrase = "testkey";
+	const char *plaintext = "test";
+	const char *crypted, *error;
+	struct password_generate_params params = {
+		.user = "testuser1",
+		.rounds = 0,
+		.scheme_passphrase = passphrase,
+	};
+	const unsigned char *raw_password;
+	size_t siz;
+
+	test_begin("password scheme(AES-256-CBC)");
+
+	test_assert(password_generate_encoded(plaintext, &params, scheme, &crypted));
+	crypted = t_strdup_printf("{%s}%s", scheme, crypted);
+	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_verify(plaintext, &params, scheme,
+				    raw_password, siz, &error) == 1);
+
+	/* trailing whitespace trim on decrypted password */
+	test_assert(password_generate_encoded("hello   ", &params, scheme, &crypted));
+	crypted = t_strdup_printf("{%s}%s", scheme, crypted);
+	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_verify("hello", &params, scheme,
+				    raw_password, siz, &error) == 1);
+
+	/* hex-encoded payload fallback */
+	test_assert(password_generate_encoded("hextest", &params, scheme, &crypted));
+	{
+		const char *dollar = strchr(crypted, '$');
+		string_t *hexpayload = t_str_new(256);
+		buffer_t *bin = t_buffer_create(128);
+
+		test_assert(dollar != NULL);
+		test_assert(base64_decode(crypted, (size_t)(dollar - crypted),
+					  bin) > 0);
+		binary_to_hex_append(hexpayload, bin->data, bin->used);
+		crypted = t_strdup_printf("{%s}%s%s", scheme,
+					    str_c(hexpayload), dollar);
+		test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
+		test_assert(password_decode(crypted, scheme, &raw_password,
+					    &siz, &error) == 1);
+		test_assert(password_verify("hextest", &params, scheme,
+					    raw_password, siz, &error) == 1);
+	}
+
+	test_end();
+}
+
 static void test_password_schemes(void)
 {
 	test_password_scheme("PLAIN", "{PLAIN}test", "test");
@@ -131,6 +187,7 @@ int main(void)
 {
 	static void (*const test_functions[])(void) = {
 		test_password_schemes,
+		test_password_scheme_aes256cbc,
 		test_password_failures,
 		NULL
 	};
