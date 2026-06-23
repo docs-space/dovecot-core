@@ -3,6 +3,7 @@
 #include "lib.h"
 #include "buffer.h"
 #include "str.h"
+#include "base64.h"
 #include "hex-binary.h"
 #include "randgen.h"
 #include "password-scheme.h"

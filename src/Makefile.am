@@ -20,7 +20,6 @@ LIBDOVECOT_SUBDIRS = \
 	lib-dns \
 	lib-settings \
 	lib-otp \
-	lib-auth \
 	lib-dns-client \
 	lib-ssl-iostream \
 	lib-master \
@@ -29,6 +28,7 @@ LIBDOVECOT_SUBDIRS = \
 	lib-charset \
 	lib-json \
 	lib-dcrypt \
+	lib-auth \
 	lib-dict \
 	lib-http \
 	lib-oauth2 \

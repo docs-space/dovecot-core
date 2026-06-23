@@ -36,6 +36,9 @@ libauth_crypt_la_LIBADD = \
 	$(CRYPT_LIBS) \
 	../lib-dcrypt/libdcrypt.la
 
+libauth_crypt_la_DEPENDENCIES = \
+	../lib-dcrypt/libdcrypt.la
+
 libauth_gssapi_la_SOURCES = \
 	auth-gssapi.c
 
@@ -83,6 +86,7 @@ test_password_scheme_LDADD = \
         $(LIBSODIUM_LIBS)
 test_password_scheme_DEPENDENCIES = \
 	../lib-otp/libotp.la \
+	../lib-dcrypt/libdcrypt.la \
 	$(test_deps)
 
 test_auth_gs2_SOURCES = \

@@ -2,6 +2,8 @@
 
 #include "test-lib.h"
 #include "buffer.h"
+#include "str.h"
+#include "base64.h"
 #include "hex-binary.h"
 #include "password-scheme.h"
 
