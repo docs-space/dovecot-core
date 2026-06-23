@@ -34,10 +34,12 @@ libauth_crypt_la_SOURCES = \
 libauth_crypt_la_LIBADD = \
 	$(LIBSODIUM_LIBS) \
 	$(CRYPT_LIBS) \
-	../lib-dcrypt/libdcrypt.la
+	../lib-dcrypt/libdcrypt.la \
+	../lib-json/libjson.la
 
 libauth_crypt_la_DEPENDENCIES = \
-	../lib-dcrypt/libdcrypt.la
+	../lib-dcrypt/libdcrypt.la \
+	../lib-json/libjson.la
 
 libauth_gssapi_la_SOURCES = \
 	auth-gssapi.c
@@ -81,12 +83,18 @@ test_password_scheme_LDFLAGS = -export-dynamic
 test_password_scheme_LDADD = \
 	$(test_libs) \
         ../lib-otp/libotp.la \
-        ../lib-dcrypt/libdcrypt.la \
+        ../lib-json/libjson.la \
+        ../lib-dcrypt/libdcrypt_openssl_static.la \
+        ../lib-ssl-iostream/libssl_iostream.la \
+        $(SSL_LIBS) \
         $(CRYPT_LIBS) \
         $(LIBSODIUM_LIBS)
 test_password_scheme_DEPENDENCIES = \
 	../lib-otp/libotp.la \
 	../lib-dcrypt/libdcrypt.la \
+	../lib-json/libjson.la \
+	../lib-dcrypt/libdcrypt_openssl_static.la \
+	../lib-ssl-iostream/libssl_iostream.la \
 	$(test_deps)
 
 test_auth_gs2_SOURCES = \
