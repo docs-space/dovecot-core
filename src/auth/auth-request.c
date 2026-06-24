@@ -2678,6 +2678,7 @@ auth_request_password_verify_log(struct auth_request *request,
 	const unsigned char *raw_password;
 	size_t raw_password_size;
 	const char *error;
+	const char *passphrase_suffix = NULL;
 	int ret;
 	struct password_generate_params gen_params = {
 		.user = request->fields.original_username,
@@ -2700,7 +2701,8 @@ auth_request_password_verify_log(struct auth_request *request,
 	}
 
 	ret = password_decode(crypted_password, scheme,
-			      &raw_password, &raw_password_size, &error);
+			      &raw_password, &raw_password_size,
+			      &passphrase_suffix, &error);
 	if (ret <= 0) {
 		if (ret < 0) {
 			e_error(event,
@@ -2712,6 +2714,9 @@ auth_request_password_verify_log(struct auth_request *request,
 		}
 		return PASSDB_RESULT_INTERNAL_FAILURE;
 	}
+
+	if (passphrase_suffix != NULL)
+		gen_params.scheme_passphrase = passphrase_suffix;
 
 	/* Use original_username since it may be important for some
 	   password schemes (eg. digest-md5). Otherwise the username is used

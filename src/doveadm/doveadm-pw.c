@@ -99,7 +99,7 @@ static void cmd_pw(struct doveadm_cmd_context *cctx)
 		}
 
 		if (password_decode(hash, scheme, &raw_password, &size,
-				    &error) <= 0)
+				    NULL, &error) <= 0)
 			i_fatal("reverse decode check failed: %s", error);
 
 		if (password_verify(plaintext, &gen_params, scheme,

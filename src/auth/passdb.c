@@ -66,7 +66,7 @@ bool passdb_get_credentials(struct auth_request *auth_request,
 	}
 
 	ret = password_decode(input, input_scheme,
-			      credentials_r, size_r, &error);
+			      credentials_r, size_r, NULL, &error);
 	if (ret <= 0) {
 		if (ret < 0) {
 			e_error(authdb_event(auth_request),

@@ -57,7 +57,7 @@ const char *password_get_scheme(const char **password);
    0 if scheme is unknown, -1 if password is invalid. */
 int password_decode(const char *password, const char *scheme,
 		    const unsigned char **raw_password_r, size_t *size_r,
-		    const char **error_r);
+		    const char **suffix_r, const char **error_r);
 
 /* Create password with wanted scheme out of plaintext password and username.
    Potential base64/hex directives are ignored in scheme. Returns FALSE if
@@ -137,7 +137,7 @@ int pbkdf2_verify(const char *plaintext,
 /* check which of the algorithms Blowfish, SHA-256 and SHA-512 are
    supported by the used libc's/glibc's crypt() */
 void password_scheme_register_crypt(void);
-void password_scheme_register_aes256cbc(void);
+void password_scheme_register_aes128cbc(void);
 
 #ifdef HAVE_LIBSODIUM
 void password_scheme_register_sodium(void);

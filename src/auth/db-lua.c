@@ -181,7 +181,7 @@ static int auth_request_lua_password_verify(lua_State *L)
 	if (scheme == NULL)
 		scheme = "PLAIN";
 	ret = password_decode(crypted_password, scheme,
-			      &raw_password, &raw_password_size, &error);
+			      &raw_password, &raw_password_size, NULL, &error);
 	if (ret <= 0) {
 		if (ret < 0) {
 			error = t_strdup_printf("Password data is not valid for scheme %s: %s",
