@@ -18,12 +18,13 @@ Type=notify
 ExecStart=/opt/r7-mailserver/mdaserver/sbin/dovecot -F
 ExecReload=/opt/r7-mailserver/mdaserver/bin/doveadm reload
 ExecStop=/opt/r7-mailserver/mdaserver/bin/doveadm stop
-PrivateTmp=true
 NonBlocking=yes
-ProtectSystem=full
-ProtectHome=no
-PrivateDevices=true
 OOMPolicy=continue
+PrivateDevices=true
+PrivateMounts=no
+ProtectSystem=false
+ProtectHome=false
+PrivateTmp=false
 
 # You can add environment variables with e.g.:
 #Environment='CORE_OUTOFMEM=1'
