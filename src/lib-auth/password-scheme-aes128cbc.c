@@ -36,11 +36,11 @@ aes128cbc_resolve_passphrase(const struct password_generate_params *params,
 
 	stored = params->scheme_passphrase;
 	decoded = t_buffer_create(64);
-	if (base64_decode(stored, strlen(stored), decoded) > 0 &&
-	    decoded->used > 0)
-		return t_strndup(decoded->data, decoded->used);
+	if (base64_decode(stored, strlen(stored), decoded) < 0 ||
+	    decoded->used == 0)
+		return stored;
 
-	return stored;
+	return t_strndup(decoded->data, decoded->used);
 }
 
 static int aes128cbc_decrypt(const char *passphrase,

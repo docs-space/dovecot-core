@@ -134,6 +134,20 @@ static void test_password_scheme_aes128cbc_hex(void)
 	test_assert(password_verify("suffix", &params, scheme,
 				    raw_password, siz, &error) == 1);
 
+	/* Cross-platform vector (mailbackends + authenticate.sql suffix) */
+	crypted = t_strdup_printf(
+		"{%s}45A9975565D1352A9F7AA6C79EB0131A2D7AFE44DBC9E89E54D9A746BDAA89DC2B5F7D4BE96F32E32167497B6168EF96$MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=",
+		scheme);
+	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
+	suffix = NULL;
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz,
+				    &suffix, &error) == 1);
+	test_assert(suffix != NULL &&
+		    strcmp(suffix, "MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=") == 0);
+	params.scheme_passphrase = suffix;
+	test_assert(password_verify("Gromy1988", &params, scheme,
+				    raw_password, siz, &error) == 1);
+
 	test_end();
 }
 
