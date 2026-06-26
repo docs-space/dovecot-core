@@ -21,8 +21,6 @@ static struct {
 	{ "ARGON2", "ARGON2I" },
 };
 
-/* some algorithms are detected as something other, because they are compatible
-   but not considered aliases by dovecot. treat those here to avoid false errors. */
 static bool schemes_are_known_non_alias(const char *generated, const char *detected)
 {
 	for(size_t i = 0; i < N_ELEMENTS(known_non_aliases); i++) {
@@ -48,13 +46,13 @@ test_password_scheme(const char *scheme, const char *crypted,
 	test_begin(t_strdup_printf("password scheme(%s)", scheme));
 
 	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
-	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, NULL, &error) == 1);
 	test_assert(password_verify(plaintext, &params, scheme, raw_password, siz, &error) == 1);
 
 	test_assert(password_generate_encoded(plaintext, &params, scheme, &crypted));
 	crypted = t_strdup_printf("{%s}%s", scheme, crypted);
 	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
-	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, NULL, &error) == 1);
 	test_assert(password_verify(plaintext, &params, scheme, raw_password, siz, &error) == 1);
 
 	scheme2 = password_scheme_detect(plaintext, crypted, &params);
@@ -82,28 +80,26 @@ static void test_password_failures(void)
 
 	test_begin("password scheme failures");
 
-	/* wrong password */
 	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
-	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, NULL, &error) == 1);
 	test_assert(password_verify(plaintext, &params, scheme, raw_password, siz, &error) == 0);
 
-	/* unknown scheme */
 	crypted = "{INVALID}invalid";
 	scheme = password_get_scheme(&crypted);
-	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 0);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, NULL, &error) == 0);
 
-	/* crypt with empty value */
 	test_assert(password_verify(plaintext, &params, "CRYPT", NULL, 0, &error) == 0);
 
 	test_end();
 }
 
-static void test_password_scheme_aes256cbc(void)
+static void test_password_scheme_aes128cbc_hex(void)
 {
-	const char *scheme = "AES-256-CBC";
+	const char *scheme = "AES-128-CBC.HEX";
 	const char *passphrase = "testkey";
+	const char *stored_key = "dGVzdGtleQ==";
 	const char *plaintext = "test";
-	const char *crypted, *error;
+	const char *crypted, *error, *suffix;
 	struct password_generate_params params = {
 		.user = "testuser1",
 		.rounds = 0,
@@ -112,42 +108,45 @@ static void test_password_scheme_aes256cbc(void)
 	const unsigned char *raw_password;
 	size_t siz;
 
-	test_begin("password scheme(AES-256-CBC)");
+	test_begin("password scheme(AES-128-CBC.HEX)");
 
 	test_assert(password_generate_encoded(plaintext, &params, scheme, &crypted));
 	crypted = t_strdup_printf("{%s}%s", scheme, crypted);
 	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
-	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, NULL, &error) == 1);
 	test_assert(password_verify(plaintext, &params, scheme,
 				    raw_password, siz, &error) == 1);
 
-	/* trailing whitespace trim on decrypted password */
 	test_assert(password_generate_encoded("hello   ", &params, scheme, &crypted));
 	crypted = t_strdup_printf("{%s}%s", scheme, crypted);
-	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
-	test_assert(password_decode(crypted, scheme, &raw_password, &siz, &error) == 1);
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz, NULL, &error) == 1);
 	test_assert(password_verify("hello", &params, scheme,
 				    raw_password, siz, &error) == 1);
 
-	/* hex-encoded payload fallback */
-	test_assert(password_generate_encoded("hextest", &params, scheme, &crypted));
-	{
-		const char *dollar = strchr(crypted, '$');
-		string_t *hexpayload = t_str_new(256);
-		buffer_t *bin = t_buffer_create(128);
+	test_assert(password_generate_encoded("suffix", &params, scheme, &crypted));
+	crypted = t_strdup_printf("{%s}%s$%s", scheme, crypted, stored_key);
+	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
+	suffix = NULL;
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz,
+				    &suffix, &error) == 1);
+	test_assert(suffix != NULL && strcmp(suffix, stored_key) == 0);
+	params.scheme_passphrase = suffix;
+	test_assert(password_verify("suffix", &params, scheme,
+				    raw_password, siz, &error) == 1);
 
-		test_assert(dollar != NULL);
-		test_assert(base64_decode(crypted, (size_t)(dollar - crypted),
-					  bin) > 0);
-		binary_to_hex_append(hexpayload, bin->data, bin->used);
-		crypted = t_strdup_printf("{%s}%s%s", scheme,
-					    str_c(hexpayload), dollar);
-		test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
-		test_assert(password_decode(crypted, scheme, &raw_password,
-					    &siz, &error) == 1);
-		test_assert(password_verify("hextest", &params, scheme,
-					    raw_password, siz, &error) == 1);
-	}
+	/* Cross-platform vector (mailbackends + authenticate.sql suffix) */
+	crypted = t_strdup_printf(
+		"{%s}45A9975565D1352A9F7AA6C79EB0131A2D7AFE44DBC9E89E54D9A746BDAA89DC2B5F7D4BE96F32E32167497B6168EF96$MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=",
+		scheme);
+	test_assert(strcmp(password_get_scheme(&crypted), scheme) == 0);
+	suffix = NULL;
+	test_assert(password_decode(crypted, scheme, &raw_password, &siz,
+				    &suffix, &error) == 1);
+	test_assert(suffix != NULL &&
+		    strcmp(suffix, "MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=") == 0);
+	params.scheme_passphrase = suffix;
+	test_assert(password_verify("Gromy1988", &params, scheme,
+				    raw_password, siz, &error) == 1);
 
 	test_end();
 }
@@ -159,6 +158,7 @@ static void test_password_schemes(void)
 	test_password_scheme("PLAIN-MD4", "{PLAIN-MD4}db346d691d7acc4dc2625db19f9e3f52", "test");
 	test_password_scheme("MD5", "{MD5}$1$wmyrgRuV$kImF6.9MAFQNHe23kq5vI/", "test");
 	test_password_scheme("SHA1", "{SHA1}qUqP5cyxm6YcTAhz05Hph5gvu9M=", "test");
+	test_password_scheme("SHA1.HEX", "{SHA1.HEX}a94a8fe5ccb19ba61c4c0873d391e987982fbb3d", "test");
 	test_password_scheme("SMD5", "{SMD5}JTu1KRwptKZJg/RLd+6Vn5GUd0M=", "test");
 	test_password_scheme("LDAP-MD5", "{LDAP-MD5}CY9rzUYh03PK3k6DJie09g==", "test");
 	test_password_scheme("SHA256", "{SHA256}n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=", "test");
@@ -189,7 +189,7 @@ int main(void)
 {
 	static void (*const test_functions[])(void) = {
 		test_password_schemes,
-		test_password_scheme_aes256cbc,
+		test_password_scheme_aes128cbc_hex,
 		test_password_failures,
 		NULL
 	};

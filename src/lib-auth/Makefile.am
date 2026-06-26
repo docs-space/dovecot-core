@@ -27,7 +27,7 @@ libauth_la_SOURCES = \
 
 libauth_crypt_la_SOURCES = \
 	mycrypt.c \
-	password-scheme-aes256cbc.c \
+	password-scheme-aes128cbc.c \
 	password-scheme-crypt.c \
 	password-scheme-sodium.c
 

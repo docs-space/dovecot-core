@@ -149,15 +149,18 @@ const char *password_get_scheme(const char **password)
 
 int password_decode(const char *password, const char *scheme,
 		    const unsigned char **raw_password_r, size_t *size_r,
-		    const char **error_r)
+		    const char **suffix_r, const char **error_r)
 {
 	const struct password_scheme *s;
 	enum password_encoding encoding;
 	buffer_t *buf;
 	size_t len;
 	bool guessed_encoding;
+	const char *p;
 
 	*error_r = NULL;
+	if (suffix_r != NULL)
+		*suffix_r = NULL;
 
 	s = password_scheme_lookup(scheme, &encoding);
 	if (s == NULL) {
@@ -166,6 +169,16 @@ int password_decode(const char *password, const char *scheme,
 	}
 
 	len = strlen(password);
+	p = strchr(password, '$');
+	if (p != NULL) {
+		if (p[1] == '\0') {
+			*error_r = "Empty suffix after $";
+			return -1;
+		}
+		if (suffix_r != NULL)
+			*suffix_r = p + 1;
+		len = (size_t)(p - password);
+	}
 	if (encoding != PW_ENCODING_NONE && s->raw_password_len != 0 &&
 	    strchr(scheme, '.') == NULL) {
 		/* encoding not specified. we can guess quite well between
@@ -179,35 +192,40 @@ int password_decode(const char *password, const char *scheme,
 		guessed_encoding = FALSE;
 	}
 
-	switch (encoding) {
-	case PW_ENCODING_NONE:
-		*raw_password_r = (const unsigned char *)password;
-		*size_r = len;
-		break;
-	case PW_ENCODING_HEX:
-		buf = t_buffer_create(len / 2 + 1);
-		if (hex_to_binary(password, buf) == 0) {
+	{
+		const char *decode_input = password;
+
+		if (p != NULL)
+			decode_input = t_strndup(password, len);
+
+		switch (encoding) {
+		case PW_ENCODING_NONE:
+			*raw_password_r = (const unsigned char *)decode_input;
+			*size_r = len;
+			break;
+		case PW_ENCODING_HEX:
+			buf = t_buffer_create(len / 2 + 1);
+			if (hex_to_binary(decode_input, buf) == 0) {
+				*raw_password_r = buf->data;
+				*size_r = buf->used;
+				break;
+			}
+			if (!guessed_encoding) {
+				*error_r = "Input isn't valid HEX encoded data";
+				return -1;
+			}
+			/* fall through */
+		case PW_ENCODING_BASE64:
+			buf = t_buffer_create(MAX_BASE64_DECODED_SIZE(len));
+			if (base64_decode(decode_input, len, buf) < 0) {
+				*error_r = "Input isn't valid base64 encoded data";
+				return -1;
+			}
+
 			*raw_password_r = buf->data;
 			*size_r = buf->used;
 			break;
 		}
-		if (!guessed_encoding) {
-			*error_r = "Input isn't valid HEX encoded data";
-			return -1;
-		}
-		/* check if it's base64-encoded after all. some input lengths
-		   produce matching hex and base64 encoded lengths. */
-		/* fall through */
-	case PW_ENCODING_BASE64:
-		buf = t_buffer_create(MAX_BASE64_DECODED_SIZE(len));
-		if (base64_decode(password, len, buf) < 0) {
-			*error_r = "Input isn't valid base64 encoded data";
-			return -1;
-		}
-
-		*raw_password_r = buf->data;
-		*size_r = buf->used;
-		break;
 	}
 	if (s->raw_password_len != *size_r && s->raw_password_len != 0) {
 		/* password has invalid length */
@@ -310,7 +328,7 @@ password_scheme_detect(const char *plain_password, const char *crypted_password,
 	while (hash_table_iterate(ctx, password_schemes, &key, &scheme)) {
 		if (password_decode(crypted_password, scheme->name,
 				    &raw_password, &raw_password_size,
-				    &error) <= 0)
+				    NULL, &error) <= 0)
 			continue;
 
 		if (password_verify(plain_password, params, scheme->name,
@@ -337,7 +355,7 @@ md5_verify(const char *plaintext, const struct password_generate_params *params,
 		str = password_generate_md5_crypt(plaintext, password);
 		return str_equals_timing_almost_safe(str, password) ? 1 : 0;
 	} else if (password_decode(password, "PLAIN-MD5",
-				   &md5_password, &md5_size, &error) <= 0) {
+				   &md5_password, &md5_size, NULL, &error) <= 0) {
 		*error_r = "Not a valid MD5-CRYPT or PLAIN-MD5 password";
 		return -1;
 	} else {
