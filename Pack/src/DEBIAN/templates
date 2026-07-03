@@ -55,7 +55,7 @@ Description: Enable MDA Doveadm TLS
 
 Template: r7mdaserver/mda-nodename
 Type: string
-Description: X-Dovecot-API key for Doveadm HTTP-API:
+Description: Enter guid of intance-identificator or empty string for auto-generation:
 
 Template: r7mdaserver/upgrade
 Type: boolean
