@@ -462,10 +462,12 @@ static void json_istream_dereference_value(struct json_istream *stream)
 			struct istream *seekable_stream =
 				stream->seekable_stream;
 			i_stream_unref(&seekable_stream);
+			/* Keep string streaming enabled while the seekable
+			   stream may still be referenced externally. */
 		} else if (stream->value_stream != NULL) {
 			i_stream_unref(&stream->value_stream);
+			json_parser_disable_string_stream(stream->parser);
 		}
-		json_parser_disable_string_stream(stream->parser);
 	}
 	if (stream->tree != NULL)
 		json_tree_unref(&stream->tree);
