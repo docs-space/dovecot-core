@@ -462,10 +462,12 @@ static void json_istream_dereference_value(struct json_istream *stream)
 			struct istream *seekable_stream =
 				stream->seekable_stream;
 			i_stream_unref(&seekable_stream);
+			/* Keep string streaming enabled while the seekable
+			   stream may still be referenced externally. */
 		} else if (stream->value_stream != NULL) {
 			i_stream_unref(&stream->value_stream);
+			json_parser_disable_string_stream(stream->parser);
 		}
-		json_parser_disable_string_stream(stream->parser);
 	}
 	if (stream->tree != NULL)
 		json_tree_unref(&stream->tree);
@@ -829,10 +831,12 @@ int json_istream_read_stream(struct json_istream *stream,
 	json_parser_enable_string_stream(stream->parser, threshold,
 					 max_buffer_size);
 	ret = json_istream_read(stream, node_r);
-	if (ret <= 0 ) {
+	if (ret < 0) {
 		json_parser_disable_string_stream(stream->parser);
 		return ret;
 	}
+	if (ret == 0)
+		return 0;
 
 	json_istream_handle_stream(stream, temp_path_prefix, max_buffer_size,
 				   node_r);
@@ -877,10 +881,12 @@ int json_istream_walk_stream(struct json_istream *stream,
 	json_parser_enable_string_stream(stream->parser, threshold,
 					 max_buffer_size);
 	ret = json_istream_walk(stream, node_r);
-	if (ret <= 0 ) {
+	if (ret < 0) {
 		json_parser_disable_string_stream(stream->parser);
 		return ret;
 	}
+	if (ret == 0)
+		return 0;
 
 	json_istream_handle_stream(stream, temp_path_prefix, max_buffer_size,
 				   node_r);

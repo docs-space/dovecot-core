@@ -1070,7 +1070,9 @@ doveadm_http_server_handle_request(void *context,
 	pool_t pool;
 	unsigned int i;
 
-	/* no pipelining possible due to synchronous handling of requests */
+	/* One request at a time (no pipelining), but keep the TCP connection
+	   open for the next sequential request when the client uses
+	   HTTP/1.1 keep-alive. */
 	i_assert(conn->request == NULL);
 
 	pool = pool_alloconly_create("doveadm request", 1024*16);
@@ -1081,7 +1083,6 @@ doveadm_http_server_handle_request(void *context,
 	req->http_request = http_sreq;
 	http_server_request_ref(req->http_request);
 
-	http_server_request_connection_close(http_sreq, TRUE);
 	http_server_request_set_destroy_callback(http_sreq,
 		doveadm_http_server_request_destroy, req);
 
