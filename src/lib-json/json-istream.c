@@ -829,10 +829,12 @@ int json_istream_read_stream(struct json_istream *stream,
 	json_parser_enable_string_stream(stream->parser, threshold,
 					 max_buffer_size);
 	ret = json_istream_read(stream, node_r);
-	if (ret <= 0 ) {
+	if (ret < 0) {
 		json_parser_disable_string_stream(stream->parser);
 		return ret;
 	}
+	if (ret == 0)
+		return 0;
 
 	json_istream_handle_stream(stream, temp_path_prefix, max_buffer_size,
 				   node_r);
@@ -877,10 +879,12 @@ int json_istream_walk_stream(struct json_istream *stream,
 	json_parser_enable_string_stream(stream->parser, threshold,
 					 max_buffer_size);
 	ret = json_istream_walk(stream, node_r);
-	if (ret <= 0 ) {
+	if (ret < 0) {
 		json_parser_disable_string_stream(stream->parser);
 		return ret;
 	}
+	if (ret == 0)
+		return 0;
 
 	json_istream_handle_stream(stream, temp_path_prefix, max_buffer_size,
 				   node_r);
