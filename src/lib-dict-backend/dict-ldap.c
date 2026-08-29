@@ -13,12 +13,11 @@
 #include "connection.h"
 #include "llist.h"
 #include "ldap-client.h"
+#include "ldap-utils.h"
 #include "dict.h"
 #include "dict-private.h"
 #include "settings.h"
 #include "dict-ldap-settings.h"
-
-static const char *LDAP_ESCAPE_CHARS = "*,\\#+<>;\"()= ";
 
 struct ldap_dict;
 struct key_value {
@@ -134,29 +133,6 @@ static
 int dict_ldap_connect(struct ldap_dict *dict, const char **error_r)
 {
 	return ldap_client_init_auto(dict->event, &dict->client, error_r);
-}
-
-#define IS_LDAP_ESCAPED_CHAR(c) \
-	((((unsigned char)(c)) & 0x80) != 0 || strchr(LDAP_ESCAPE_CHARS, (c)) != NULL)
-
-static int ldap_escape(const char *str, const char **output_r,
-		       void *context ATTR_UNUSED, const char **error_r ATTR_UNUSED)
-{
-	string_t *ret = NULL;
-
-	for (const char *p = str; *p != '\0'; p++) {
-		if (IS_LDAP_ESCAPED_CHAR(*p)) {
-			if (ret == NULL) {
-				ret = t_str_new((size_t) (p - str) + 64);
-				str_append_data(ret, str, (size_t) (p - str));
-			}
-			str_printfa(ret, "\\%02X", (unsigned char)*p);
-		} else if (ret != NULL)
-			str_append_c(ret, *p);
-	}
-
-	*output_r = ret == NULL ? str : str_c(ret);
-	return 0;
 }
 
 static
