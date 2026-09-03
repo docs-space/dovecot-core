@@ -259,6 +259,7 @@ imapc_mail_send_fetch(struct mail *_mail, enum mail_fetch_field fields,
 	if ((fields & (MAIL_FETCH_PHYSICAL_SIZE | MAIL_FETCH_VIRTUAL_SIZE)) != 0)
 		str_append(str, "RFC822.SIZE ");
 	if ((fields & MAIL_FETCH_GUID) != 0) {
+		i_assert(mbox->guid_fetch_field_name != NULL);
 		str_append(str, mbox->guid_fetch_field_name);
 		str_append_c(str, ' ');
 	}

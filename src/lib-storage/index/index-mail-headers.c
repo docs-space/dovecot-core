@@ -481,6 +481,7 @@ int index_mail_parse_headers_internal(struct index_mail *mail,
 		/* initialize bodystructure parsing in case we read the whole
 		   message. */
 		index_mail_init_parser(mail);
+		i_assert(data->parser_ctx != NULL);
 		message_parser_parse_header(data->parser_ctx, &data->hdr_size,
 					    index_mail_parse_part_header_cb,
 					    mail);

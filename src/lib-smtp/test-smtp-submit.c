@@ -1420,6 +1420,7 @@ static void test_successful_delivery_deinit(struct server_connection *conn)
 	struct _successful_delivery_server *ctx =
 		(struct _successful_delivery_server *)conn->context;
 
+	i_assert(ctx != NULL);
 	i_stream_unref(&ctx->dot_input);
 	o_stream_unref(&ctx->file);
 }

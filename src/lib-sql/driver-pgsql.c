@@ -1331,6 +1331,7 @@ driver_pgsql_try_commit_s(struct pgsql_transaction_context *ctx,
 	struct sql_transaction_query *single_query = NULL;
 	struct sql_result *result;
 
+	i_assert(_ctx->head != NULL);
 	if (_ctx->head->next == NULL) {
 		/* just a single query, send it */
 		single_query = _ctx->head;

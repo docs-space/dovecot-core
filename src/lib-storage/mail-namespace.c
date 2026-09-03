@@ -710,8 +710,10 @@ char mail_namespace_get_sep(struct mail_namespace *ns)
 
 char mail_namespaces_get_root_sep(struct mail_namespace *namespaces)
 {
-	while ((namespaces->flags & NAMESPACE_FLAG_LIST_PREFIX) == 0)
+	while ((namespaces->flags & NAMESPACE_FLAG_LIST_PREFIX) == 0) {
 		namespaces = namespaces->next;
+		i_assert(namespaces != NULL);
+	}
 	return mail_namespace_get_sep(namespaces);
 }
 

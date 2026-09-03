@@ -644,6 +644,7 @@ static bool cmd_sync_continue(struct client_command_context *sync_cmd)
 	   backwards, so that tagged replies are sent in the same order as
 	   they were received. This fixes problems with clients that rely on
 	   this (Apple Mail 3.2) */
+	i_assert(client->command_queue != NULL);
 	for (cmd = client->command_queue; cmd->next != NULL; cmd = cmd->next) ;
 	for (; cmd != NULL; cmd = prev) {
 		prev = cmd->prev;

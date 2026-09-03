@@ -966,6 +966,7 @@ static void
 auth_master_pass_lookup_finished(struct auth_master_lookup *_lookup,
 				 int result, const char *const *fields)
 {
+	i_assert(fields != NULL);
 	struct auth_master_pass_lookup *lookup =
 		container_of(_lookup, struct auth_master_pass_lookup, lookup);
 
@@ -973,7 +974,7 @@ auth_master_pass_lookup_finished(struct auth_master_lookup *_lookup,
 		struct event_passthrough *e =
 			event_create_passthrough(_lookup->event)->
 			set_name("auth_client_passdb_lookup_finished");
-		if (fields == NULL || fields[0] == NULL) {
+		if (fields[0] == NULL) {
 			e->add_str("error", "Lookup failed");
 			e_debug(e->event(), "Passdb lookup failed");
 		} else {
@@ -986,7 +987,7 @@ auth_master_pass_lookup_finished(struct auth_master_lookup *_lookup,
 			event_create_passthrough(_lookup->event)->
 			set_name("auth_client_passdb_lookup_finished");
 		e_debug(e->event(), "Finished passdb lookup (%s)",
-			(fields == NULL ? "" : t_strarray_join(fields, " ")));
+			t_strarray_join(fields, " "));
 	}
 
 	lookup->callback(lookup->context, result, fields);

@@ -166,6 +166,7 @@ static int search_arg_match_keywords(struct index_search_context *ctx,
 	const unsigned int *keyword_indexes;
 	unsigned int i, j, count;
 
+	i_assert(search_kws != NULL);
 	if (search_kws->count == 0) {
 		/* invalid keyword - never matches */
 		return 0;

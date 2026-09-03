@@ -1058,6 +1058,8 @@ static void virtual_sync_mailbox_box_update(struct virtual_sync_context *ctx,
 	ARRAY_TYPE(seq_range) removed_uids, added_uids, temp_uids;
 	unsigned int count1, count2;
 
+	i_assert(bbox->search_result != NULL);
+
 	t_array_init(&removed_uids, 128);
 	t_array_init(&added_uids, 128);
 

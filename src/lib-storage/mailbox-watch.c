@@ -21,6 +21,7 @@ struct mailbox_notify_file {
 
 static void notify_delay_callback(struct mailbox *box)
 {
+	i_assert(box->notify_callback != NULL);
 	timeout_remove(&box->to_notify_delay);
 	box->notify_callback(box, box->notify_context);
 }

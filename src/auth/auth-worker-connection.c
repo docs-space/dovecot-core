@@ -315,6 +315,7 @@ static int auth_worker_request_handle(struct auth_worker_connection *worker,
 				      const char *const *args)
 {
 	struct auth_worker_request *_request = worker->request;
+	i_assert(_request != NULL);
 
 	/* lines starting with '*' denote a multi-line request
 	   if they do, reset timeouts

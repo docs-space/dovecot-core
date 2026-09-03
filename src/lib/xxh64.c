@@ -72,6 +72,7 @@ void ATTR_UNSIGNED_WRAPS xxh64_loop(struct xxh64_context *ctx, const void *data,
 
 	if (ctx->buf_used > 0) {
 		size_t fill = 32 - ctx->buf_used;
+		i_assert(fill <= size);
 		memcpy(ctx->buf + ctx->buf_used, p, fill);
 		p += fill;
 		ctx->v1 = xxh64_round(ctx->v1, xxh64_read64(ctx->buf));

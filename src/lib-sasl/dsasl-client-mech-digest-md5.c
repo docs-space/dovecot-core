@@ -346,6 +346,7 @@ mech_digest_md5_output_first(struct digest_md5_dsasl_client *dclient)
 
 	unsigned char a1_secret[hmethod->digest_size];
 
+	i_assert(client->password != NULL);
 	auth_digest_get_hash_a1_secret(hmethod, dclient->username,
 				       dclient->realm, client->password,
 				       a1_secret);

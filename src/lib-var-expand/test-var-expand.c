@@ -1416,7 +1416,7 @@ static void test_var_expand_split(void)
 	struct var_expand_program *program;
 	const char *error;
 
-	var_expand_program_create(prog, &program, &error);
+	test_assert(var_expand_program_create(prog, &program, &error) == 0);
 
 	const char *placeholder = ";";
 	t_array_init(&parts, 8);

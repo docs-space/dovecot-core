@@ -162,6 +162,8 @@ pop3c_get_remote_msgs(ARRAY_TYPE(pop3c_sync_msg) *remote_msgs,
 	struct pop3c_sync_msg *msg;
 	uint32_t seq;
 
+	i_assert(mbox->msg_count == 0 || mbox->msg_uidls != NULL);
+
 	for (seq = 1; seq <= mbox->msg_count; seq++) {
 		msg = array_append_space(remote_msgs);
 		msg->seq = seq;

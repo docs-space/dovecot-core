@@ -486,6 +486,9 @@ static int fts_body_parser_finish(struct fts_mail_build_context *ctx,
 	const char *retriable_error;
 	int ret = 0;
 	int deinit_ret;
+
+	i_assert(ctx->body_parser != NULL);
+
 	*may_need_retry_r = FALSE;
 
 	do {

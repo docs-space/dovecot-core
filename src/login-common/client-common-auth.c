@@ -613,6 +613,7 @@ proxy_check_start(struct client *client, struct event *event,
 		  const struct client_auth_reply *reply,
 		  const struct dsasl_client_mech **sasl_mech_r)
 {
+	i_assert(reply->proxy.username != NULL);
 	i_assert(reply->proxy.password != NULL);
 	i_assert(reply->proxy.host != NULL && reply->proxy.host[0] != '\0');
 	i_assert(reply->proxy.host_ip.family != 0);

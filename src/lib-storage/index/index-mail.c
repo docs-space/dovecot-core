@@ -1574,12 +1574,12 @@ static int index_mail_parse_bodystructure(struct index_mail *mail,
 		if (index_mail_write_body_snippet(mail) < 0)
 			return -1;
 
+		i_assert(data->body_snippet != NULL &&
+			 data->body_snippet[0] != '\0');
+
 		index_mail_cache_add_if_wanted(mail, MAIL_CACHE_BODY_SNIPPET,
 					       mail->data.body_snippet,
 					       strlen(mail->data.body_snippet));
-
-		i_assert(data->body_snippet != NULL &&
-			 data->body_snippet[0] != '\0');
 	}
 
 	if (data->body == NULL &&
@@ -2351,6 +2351,8 @@ void index_mail_cache_parse_continue(struct mail *_mail)
 {
 	struct index_mail *mail = INDEX_MAIL(_mail);
 	struct message_block block;
+
+	i_assert(mail->data.parser_ctx != NULL);
 
 	while (message_parser_parse_next_block(mail->data.parser_ctx,
 					       &block) > 0) {

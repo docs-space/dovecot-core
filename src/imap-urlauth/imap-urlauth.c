@@ -86,6 +86,7 @@ void imap_urlauth_refresh_proctitle(void)
 		str_append(title, "idling");
 		break;
 	case 1:
+		i_assert(imap_urlauth_clist->connections != NULL);
 		client = container_of(imap_urlauth_clist->connections,
 				      struct client, conn);
 		str_append(title, client->username);

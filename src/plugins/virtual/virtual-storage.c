@@ -670,6 +670,7 @@ virtual_mailbox_get_metadata(struct mailbox *box,
 static void
 virtual_notify_callback(struct mailbox *bbox ATTR_UNUSED, struct mailbox *box)
 {
+	i_assert(box->notify_callback != NULL);
 	box->notify_callback(box, box->notify_context);
 }
 

@@ -192,6 +192,7 @@ static void acl_backend_vfile_update_cache(struct acl_object *_aclobj, int fd)
 
 	validity = acl_cache_get_validity(_aclobj->backend->cache,
 					  _aclobj->name);
+	i_assert(validity != NULL);
 	validity->local_validity.last_read_time = ioloop_time;
 	validity->local_validity.last_mtime = st.st_mtime;
 	validity->local_validity.last_size = st.st_size;

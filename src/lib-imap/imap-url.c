@@ -927,6 +927,7 @@ int imap_url_parse_prefix(const char *url, const struct imap_url *base,
 static void
 imap_url_append_mailbox(const struct imap_url *url, string_t *urlstr)
 {
+	i_assert(url->mailbox != NULL);
 	uri_append_path_data(urlstr, ";", url->mailbox);
 	if (url->uidvalidity != 0)
 		str_printfa(urlstr, ";UIDVALIDITY=%u", url->uidvalidity);

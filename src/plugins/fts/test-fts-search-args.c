@@ -391,6 +391,7 @@ static void test_phrase_new_args_structure(void)
 	test_assert(or1->next == NULL);
 
 	sub = sub->next;
+	i_assert(sub != NULL);
 
 	test_assert(sub->type == SEARCH_OR);
 	test_assert(HAS_NO_BITS(sub->value.search_flags,

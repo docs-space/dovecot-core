@@ -389,6 +389,7 @@ static bool mail_thread_cache_update_removes(struct mail_thread_mailbox *tbox,
 	unsigned int i, j, idx, map_count, uid_count;
 	uint32_t uid;
 
+	i_assert(cache->search_result != NULL);
 	t_array_init(&removed_uids, 64);
 	mailbox_search_result_sync(cache->search_result,
 				   &removed_uids, added_uids);

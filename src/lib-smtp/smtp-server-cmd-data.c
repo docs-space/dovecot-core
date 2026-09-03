@@ -272,7 +272,7 @@ static int cmd_data_do_handle_input(struct smtp_server_cmd_ctx *cmd)
 	int ret;
 
 	i_assert(data_cmd != NULL);
-
+	i_assert(conn->state.trans != NULL);
 	i_assert(callbacks != NULL &&
 		 callbacks->conn_cmd_data_continue != NULL);
 	struct event_reason *reason =
@@ -399,6 +399,7 @@ cmd_data_next(struct smtp_server_cmd_ctx *cmd,
 		i_assert(callbacks != NULL &&
 			 callbacks->conn_cmd_data_begin != NULL);
 		i_assert(conn->state.data_input != NULL);
+		i_assert(conn->state.trans != NULL);
 		struct event_reason *reason =
 			smtp_server_connection_reason_begin(conn, "cmd_data");
 		int ret = callbacks->conn_cmd_data_begin(conn->context,

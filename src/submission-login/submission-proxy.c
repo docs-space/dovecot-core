@@ -320,6 +320,8 @@ proxy_handle_ehlo_reply(struct submission_client *client,
 	struct smtp_server_cmd_ctx *cmd = client->auth_cmd;
 	int ret;
 
+	i_assert(cmd != NULL);
+
 	switch (client->proxy_state) {
 	case SUBMISSION_PROXY_EHLO:
 		ret = proxy_send_starttls(client, output);

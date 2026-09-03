@@ -533,6 +533,7 @@ static void imapc_search_reply_esort(const struct imap_arg *args,
 	const char *atom;
 
 	/* It should contain UID ALL <uidset> or just UID if nothing matched */
+	i_assert(mbox->search_ctx != NULL);
 	if (!imap_arg_atom_equals(&args[0], "UID") ||
 	    (args[1].type != IMAP_ARG_EOL &&
 	     (!imap_arg_atom_equals(&args[1], "ALL") ||

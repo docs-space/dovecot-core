@@ -1599,6 +1599,7 @@ int config_filter_parse(struct config_filter *filter, pool_t pool,
 	struct config_filter *parent = filter->parent;
 	const char *error;
 
+	i_assert(parent != NULL);
 	*error_r = NULL;
 
 	if (key[0] == SETTINGS_INCLUDE_GROUP_PREFIX) {

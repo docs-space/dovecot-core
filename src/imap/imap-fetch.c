@@ -323,7 +323,7 @@ int imap_fetch_send_vanished(struct client *client, struct mailbox *box,
 	int ret = 0;
 
 	i_assert(uidarg->type == SEARCH_UIDSET);
-	i_assert(modseqarg->type == SEARCH_MODSEQ);
+	i_assert(modseqarg != NULL && modseqarg->type == SEARCH_MODSEQ);
 
 	uid_filter = &uidarg->value.seqset;
 	modseq = modseqarg->value.modseq->modseq - 1;

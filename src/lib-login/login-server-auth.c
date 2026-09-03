@@ -268,6 +268,7 @@ static unsigned int auth_get_next_timeout_msecs(struct login_server_auth *auth)
 	struct timeval expires;
 	long long diff;
 
+	i_assert(auth->request_head != NULL);
 	expires = auth->request_head->create_stamp;
 	timeval_add_msecs(&expires, auth->timeout_msecs);
 

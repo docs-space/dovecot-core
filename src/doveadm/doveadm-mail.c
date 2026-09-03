@@ -1017,6 +1017,8 @@ void
 doveadm_cmd_ver2_to_mail_cmd_wrapper(struct doveadm_cmd_context *cctx)
 {
 	struct doveadm_mail_cmd_context *mctx;
+
+	i_assert(cctx->cmd->mail_cmd != NULL);
 	struct doveadm_mail_cmd mail_cmd = {
 		.alloc = cctx->cmd->mail_cmd,
 		.name = cctx->cmd->name,

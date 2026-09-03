@@ -288,6 +288,7 @@ int mail_transaction_log_view_set(struct mail_transaction_log_view *view,
 	view->tail = tail;
 	view->head = head;
 	for (file = view->tail; ; file = file->next) {
+		i_assert(file != NULL);
 		array_push_back(&view->file_refs, &file);
 
 		if (file == head)

@@ -105,6 +105,7 @@ mail_index_alloc_cache_find_and_expire(const char *mailbox_path,
 				/* make sure the directory still exists.
 				   it might have been renamed and we're trying
 				   to access it via its new path now. */
+				i_assert(rec->index->dir != NULL);
 				if (stat(rec->index->dir, &st) < 0 ||
 				    st.st_ino != index_st->st_ino ||
 				    !CMP_DEV_T(st.st_dev, index_st->st_dev))

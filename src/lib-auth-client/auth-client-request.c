@@ -259,6 +259,7 @@ call_callback(struct auth_client_request *request,
 		if (args == NULL && status != AUTH_REQUEST_STATUS_OK)
 			args = temp_failure_args;
 	}
+	i_assert(args != NULL || status == AUTH_REQUEST_STATUS_CONTINUE);
 	callback(request, status, log_error, data_base64, args, request->context);
 }
 

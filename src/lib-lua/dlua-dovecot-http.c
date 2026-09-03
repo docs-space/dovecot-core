@@ -334,6 +334,7 @@ static void dlua_http_response_read_payload(const struct http_response *response
 {
 	struct dlua_http_response_payload_context *ctx =
 		i_new(struct dlua_http_response_payload_context ,1);
+	i_assert(response->payload != NULL);
 	ctx->payload_istream = response->payload;
 	ctx->io = io_add_istream(response->payload,
 			dlua_http_response_input_payload, ctx);

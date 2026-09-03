@@ -84,6 +84,7 @@ wrapper_ostream_handle_parent_error(struct wrapper_ostream *wostream)
 {
 	wrapper_ostream_copy_parent_error(wostream);
 
+	i_assert(wostream->output != NULL);
 	if (wostream->output->closed)
 		o_stream_close(&wostream->ostream.ostream);
 

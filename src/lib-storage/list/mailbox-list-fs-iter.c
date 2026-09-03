@@ -676,6 +676,7 @@ fs_list_entry(struct fs_list_iterate_context *ctx,
 	const char *storage_name, *vname, *child_dir_name;
 
 	dir = ctx->dir;
+	i_assert(dir != NULL);
 	storage_name = dir_get_storage_name(dir, entry->fname);
 
 	vname = mailbox_list_get_vname(ctx->ctx.list, storage_name);
@@ -803,6 +804,7 @@ fs_list_next(struct fs_list_iterate_context *ctx)
 		entries = array_get(&ctx->dir->entries, &count);
 		while (ctx->dir->entry_idx < count) {
 			ret = fs_list_entry(ctx, &entries[ctx->dir->entry_idx++]);
+			i_assert(ctx->dir != NULL);
 			if (ret > 0)
 				return 1;
 			if (ret < 0)
