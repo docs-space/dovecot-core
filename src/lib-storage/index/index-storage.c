@@ -1260,16 +1260,26 @@ int index_storage_save_continue(struct mail_save_context *ctx,
 
 	if (input->stream_errno != 0) {
 		if (!ctx->copying_or_moving &&
-		    (input->stream_errno == ECONNRESET ||
+		    (input->stream_errno == EPIPE ||
+		     input->stream_errno == ECONNRESET ||
 		     input->stream_errno == ECONNABORTED)) {
-			/* The client reset the connection in the middle of
-			   sending the mail (e.g. IMAP APPEND). The caller
-			   logs the disconnection, so don't log an error about
-			   it here. The error string isn't sent anywhere,
-			   because the client is already gone. While copying
-			   the input comes from the storage instead (e.g. obox
-			   over HTTP), where a reset connection is a real
-			   error. */
+			/* The client disconnected in the middle of sending
+			   the mail (e.g. IMAP APPEND). The caller logs the
+			   disconnection, so don't log an error about it here.
+			   The error string isn't sent anywhere, because the
+			   client is already gone. While copying the input
+			   comes from the storage instead (e.g. obox over
+			   HTTP), where these are real errors.
+
+			   ECONNRESET/ECONNABORTED mean that the connection
+			   was reset instead of being closed cleanly.
+
+			   EPIPE never means a failed syscall here: it's set
+			   for any stream that was closed without an error
+			   (see i_stream_close()), and by istream-zlib when a
+			   compressed client stream (IMAP COMPRESS) ends in
+			   the middle of the mail. A cleanly disconnected
+			   uncompressed client returns only EOF instead. */
 			mail_storage_set_error(storage, MAIL_ERROR_TEMP,
 					       "Client disconnected");
 			return -1;
