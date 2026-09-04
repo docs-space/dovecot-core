@@ -198,7 +198,7 @@ struct client {
 	const char *local_name;
 	const char *client_cert_common_name;
 	struct var_expand_program *log_progam;
-	const char *const *const log_template;
+	const char *const *log_template;
 	ARRAY_TYPE(const_expansion_program) *log_elements;
 
 	string_t *client_id;
