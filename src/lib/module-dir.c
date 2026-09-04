@@ -543,30 +543,23 @@ void module_dir_init(struct module *modules)
 
 void module_dir_deinit(struct module *modules)
 {
-	struct module *module, **rev;
-	unsigned int i, count = 0;
-
-	for (module = modules; module != NULL; module = module->next) {
-		if (module->deinit != NULL && module->initialized)
-			count++;
-	}
-
-	if (count == 0)
+	if (modules == NULL)
 		return;
 
-	/* @UNSAFE: deinitialize in reverse order */
+	/* deinitialize in reverse order */
 	T_BEGIN {
-		rev = t_new(struct module *, count);
-		for (i = 0, module = modules; i < count; ) {
-			if (module->deinit != NULL && module->initialized) {
-				rev[count-i-1] = module;
-				i++;
-			}
-			module = module->next;
+		ARRAY(struct module *) order;
+		struct module *const *modulep;
+		struct module *module;
+
+		t_array_init(&order, 8);
+		for (module = modules; module != NULL; module = module->next) {
+			if (module->deinit != NULL && module->initialized)
+				array_push_back(&order, &module);
 		}
 
-		for (i = 0; i < count; i++) {
-			module = rev[i];
+		array_foreach_reverse(&order, modulep) {
+			module = *modulep;
 
 			T_BEGIN {
 				module->deinit();
