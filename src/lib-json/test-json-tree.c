@@ -349,6 +349,7 @@ static void test_json_tree_node_inspect(void)
 
 	/* array child */
 	jtnode = json_tree_node_get_member(root, "c");
+	test_assert(jtnode != NULL);
 	test_assert(json_tree_node_is_array(jtnode));
 	test_assert_ucmp(json_tree_node_get_child_count(jtnode), ==, 3);
 	test_assert(json_tree_node_get_nth_child(jtnode, 2) != NULL);
