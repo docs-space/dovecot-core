@@ -240,8 +240,9 @@ test_session_disconnect(struct connect_limit *limit,
 	struct test_session *session;
 	unsigned int i, elem = i_rand_limit(*test_session_count);
 
-	for (i = 0, session = *test_sessions; i < elem; i++)
+	for (i = 0, session = *test_sessions; i < elem && session != NULL; i++)
 		session = session->next;
+	i_assert(session != NULL);
 
 	DLLIST_REMOVE(test_sessions, session);
 	*test_session_count -= 1;
