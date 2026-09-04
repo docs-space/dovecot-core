@@ -209,7 +209,8 @@ test_derived_bidi_class_line(const char *line, unsigned int line_num,
 	uint32_t cp_first, cp_last, cp;
 	const char *value, *comment_line = NULL;
 
-	if (str_begins(comment_data, "@missing: ", &comment_line))
+	if (comment_data != NULL &&
+	    str_begins(comment_data, "@missing: ", &comment_line))
 		line = comment_line;
 
 	if (!parse_prop_file_line(line, UCD_DERIVED_BIDI_CLASS_TXT, line_num,
