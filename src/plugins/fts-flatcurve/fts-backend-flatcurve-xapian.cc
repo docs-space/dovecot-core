@@ -1107,12 +1107,11 @@ fts_flatcurve_database_terms_fetch(bool headers,
 	Xapian::Database *db;
 	Xapian::TermIterator iter, end;
 
-	const char *prefix = headers ? FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX : "";
-
 	int ret = fts_flatcurve_xapian_read_db(backend, opts, &db, error_r);
 	if (ret <= 0)
 		return ret;
 
+	const std::string prefix = headers ? FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX : "";
 	for (iter = db->allterms_begin(prefix), end = db->allterms_end(prefix);
 		iter != end; ++iter) {
 
