@@ -24,6 +24,8 @@ struct fts_flatcurve_mailbox_list {
 
 #define FTS_FLATCURVE_LIST_CONTEXT(obj) \
 	MODULE_CONTEXT(obj, fts_flatcurve_mailbox_list_module)
+#define FTS_FLATCURVE_LIST_CONTEXT_REQUIRE(obj) \
+	MODULE_CONTEXT_REQUIRE(obj, fts_flatcurve_mailbox_list_module)
 
 static void fts_flatcurve_mail_user_deinit(struct mail_user *user)
 {
@@ -75,7 +77,8 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 static bool
 fts_flatcurve_is_internal_name(struct mailbox_list *list, const char *name)
 {
-	struct fts_flatcurve_mailbox_list *flist = FTS_FLATCURVE_LIST_CONTEXT(list);
+	struct fts_flatcurve_mailbox_list *flist =
+		FTS_FLATCURVE_LIST_CONTEXT_REQUIRE(list);
 
 	/* We need to recognize the fts-flatcurve directory as an internal
 	   mailbox directory. This ensures that Maildir's non-recursive

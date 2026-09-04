@@ -660,7 +660,7 @@ maildir_is_internal_name(struct mailbox_list *list,
 			 const char *name)
 {
 	struct maildir_mailbox_list_context *mlist =
-		MODULE_CONTEXT(list, maildir_mailbox_list_module);
+		MODULE_CONTEXT_REQUIRE(list, maildir_mailbox_list_module);
 
 	if (strcmp(name, "cur") == 0 ||
 	    strcmp(name, "new") == 0 ||

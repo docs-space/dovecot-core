@@ -15,6 +15,8 @@
 
 #define TIKA_USER_CONTEXT(obj) \
 	MODULE_CONTEXT(obj, fts_parser_tika_user_module)
+#define TIKA_USER_CONTEXT_REQUIRE(obj) \
+	MODULE_CONTEXT_REQUIRE(obj, fts_parser_tika_user_module)
 
 struct fts_parser_tika_user {
 	union mail_user_module_context module_ctx;
@@ -42,7 +44,7 @@ static MODULE_CONTEXT_DEFINE_INIT(fts_parser_tika_user_module,
 
 static void fts_tika_mail_user_deinit(struct mail_user *user)
 {
-	struct fts_parser_tika_user *tuser = TIKA_USER_CONTEXT(user);
+	struct fts_parser_tika_user *tuser = TIKA_USER_CONTEXT_REQUIRE(user);
 
 	if (tuser->http_client != NULL)
 		http_client_deinit(&tuser->http_client);
