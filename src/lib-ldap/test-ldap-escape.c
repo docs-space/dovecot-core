@@ -18,6 +18,7 @@ static void test_ldap_escape(void)
 		{ "# start-end#", "\\23 start-end#" },
 		{ "  start-end2  ", "\\20 start-end2 \\20" },
 		{ "middle:,+\"\\<>;=", "middle:\\2c\\2b\\22\\5c\\3c\\3e\\3b\\3d" },
+		{ "filter:*()", "filter:\\2a\\28\\29" },
 		{ "valid-utf8:\xc3\xb1", "valid-utf8:\xc3\xb1" },
 		{ "Bad \xFF Characters", "Bad \xEF\xBF\xBD Characters" },
 	};
