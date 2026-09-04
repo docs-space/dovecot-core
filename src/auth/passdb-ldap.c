@@ -12,6 +12,7 @@
 #include "settings.h"
 #include "auth-settings.h"
 #include "db-ldap.h"
+#include "ldap-utils.h"
 
 #include <ldap.h>
 

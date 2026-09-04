@@ -1,9 +1,7 @@
 /* Copyright (c) Dovecot authors, see top-level COPYING file */
 
-#include "test-auth.h"
-
-#ifdef HAVE_LDAP
-#include "db-ldap.h"
+#include "test-lib.h"
+#include "ldap-utils.h"
 
 static void test_ldap_escape(void)
 {
@@ -32,9 +30,11 @@ static void test_ldap_escape(void)
 	test_end();
 }
 
-void test_db_ldap(void)
+int main(void)
 {
-	test_ldap_escape();
+	static void (*const test_functions[])(void) = {
+		test_ldap_escape,
+		NULL
+	};
+	return test_run(test_functions);
 }
-
-#endif
