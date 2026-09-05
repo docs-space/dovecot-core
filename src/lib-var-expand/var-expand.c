@@ -406,7 +406,7 @@ static int call_value_provider(const struct var_expand_state *state,
 		*error_r = t_strdup_printf("%s: %s", prefix, *error_r);
 	}
 
-	i_assert(*value_r != NULL || ret == -1);
+	i_assert(ret < 0 || *value_r != NULL);
 
 	return ret;
 }
