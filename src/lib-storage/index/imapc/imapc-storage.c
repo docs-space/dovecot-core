@@ -1449,14 +1449,10 @@ struct mail_storage imapc_storage = {
 	.set_info = &imapc_setting_parser_info,
 
 	.v = {
-		imapc_storage_alloc,
-		imapc_storage_create,
-		imapc_storage_destroy,
-		NULL,
-		NULL,
-		imapc_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = imapc_storage_alloc,
+		.create = imapc_storage_create,
+		.destroy = imapc_storage_destroy,
+		.mailbox_alloc = imapc_mailbox_alloc,
 	}
 };
 

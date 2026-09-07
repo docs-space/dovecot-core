@@ -26,14 +26,9 @@ struct mail_storage fail_storage = {
 	.class_flags = MAIL_STORAGE_CLASS_FLAG_NO_ROOT,
 
 	.v = {
-		fail_storage_alloc,
-		NULL,
-		fail_storage_destroy,
-		NULL,
-		NULL,
-		fail_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = fail_storage_alloc,
+		.destroy = fail_storage_destroy,
+		.mailbox_alloc = fail_mailbox_alloc,
 	}
 };
 

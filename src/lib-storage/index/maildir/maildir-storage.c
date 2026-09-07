@@ -762,14 +762,13 @@ struct mail_storage maildir_storage = {
 	.set_info = &maildir_setting_parser_info,
 
 	.v = {
-		maildir_storage_alloc,
-		maildir_storage_create,
-		maildir_storage_destroy,
-		maildir_storage_add_list,
-		maildir_storage_autodetect,
-		maildir_mailbox_alloc,
-		NULL,
-		mail_storage_list_index_rebuild,
+		.alloc = maildir_storage_alloc,
+		.create = maildir_storage_create,
+		.destroy = maildir_storage_destroy,
+		.add_list = maildir_storage_add_list,
+		.autodetect = maildir_storage_autodetect,
+		.mailbox_alloc = maildir_mailbox_alloc,
+		.list_index_rebuild = mail_storage_list_index_rebuild,
 	}
 };
 

@@ -825,14 +825,12 @@ struct mail_storage mbox_storage = {
 	.set_info = &mbox_setting_parser_info,
 
 	.v = {
-		mbox_storage_alloc,
-		mbox_storage_create,
-		mbox_storage_destroy,
-		mbox_storage_add_list,
-		mbox_storage_autodetect,
-		mbox_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = mbox_storage_alloc,
+		.create = mbox_storage_create,
+		.destroy = mbox_storage_destroy,
+		.add_list = mbox_storage_add_list,
+		.autodetect = mbox_storage_autodetect,
+		.mailbox_alloc = mbox_mailbox_alloc,
 	}
 };
 

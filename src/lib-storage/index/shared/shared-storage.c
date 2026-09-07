@@ -482,13 +482,9 @@ struct mail_storage shared_storage = {
 	.class_flags = 0, /* unknown at this point */
 
 	.v = {
-		shared_storage_alloc,
-		shared_storage_create,
-		index_storage_destroy,
-		NULL,
-		NULL,
-		fail_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = shared_storage_alloc,
+		.create = shared_storage_create,
+		.destroy = index_storage_destroy,
+		.mailbox_alloc = fail_mailbox_alloc,
 	}
 };

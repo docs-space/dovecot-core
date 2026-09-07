@@ -476,14 +476,13 @@ struct mail_storage mdbox_storage = {
 	.set_info = &mdbox_setting_parser_info,
 
 	.v = {
-		mdbox_storage_alloc,
-		mdbox_storage_create,
-		mdbox_storage_destroy,
-		NULL,
-		mdbox_storage_autodetect,
-		mdbox_mailbox_alloc,
-		mdbox_purge,
-		mail_storage_list_index_rebuild,
+		.alloc = mdbox_storage_alloc,
+		.create = mdbox_storage_create,
+		.destroy = mdbox_storage_destroy,
+		.autodetect = mdbox_storage_autodetect,
+		.mailbox_alloc = mdbox_mailbox_alloc,
+		.purge = mdbox_purge,
+		.list_index_rebuild = mail_storage_list_index_rebuild,
 	}
 };
 

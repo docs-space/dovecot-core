@@ -479,14 +479,12 @@ struct mail_storage sdbox_storage = {
 	.event_category = &event_category_sdbox,
 
 	.v = {
-		sdbox_storage_alloc,
-		sdbox_storage_create,
-		dbox_storage_destroy,
-		NULL,
-		sdbox_storage_autodetect,
-		sdbox_mailbox_alloc,
-		NULL,
-		mail_storage_list_index_rebuild,
+		.alloc = sdbox_storage_alloc,
+		.create = sdbox_storage_create,
+		.destroy = dbox_storage_destroy,
+		.autodetect = sdbox_storage_autodetect,
+		.mailbox_alloc = sdbox_mailbox_alloc,
+		.list_index_rebuild = mail_storage_list_index_rebuild,
 	}
 };
 
@@ -497,14 +495,12 @@ struct mail_storage dbox_storage = {
 	.set_info = &sdbox_setting_parser_info,
 
 	.v = {
-		sdbox_storage_alloc,
-		sdbox_storage_create,
-		dbox_storage_destroy,
-		NULL,
-		sdbox_storage_autodetect,
-		sdbox_mailbox_alloc,
-		NULL,
-		mail_storage_list_index_rebuild,
+		.alloc = sdbox_storage_alloc,
+		.create = sdbox_storage_create,
+		.destroy = dbox_storage_destroy,
+		.autodetect = sdbox_storage_autodetect,
+		.mailbox_alloc = sdbox_mailbox_alloc,
+		.list_index_rebuild = mail_storage_list_index_rebuild,
 	}
 };
 

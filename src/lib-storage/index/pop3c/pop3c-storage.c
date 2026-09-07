@@ -305,14 +305,10 @@ struct mail_storage pop3c_storage = {
 	.set_info = &pop3c_setting_parser_info,
 
 	.v = {
-		pop3c_storage_alloc,
-		pop3c_storage_create,
-		pop3c_storage_destroy,
-		NULL,
-		NULL,
-		pop3c_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = pop3c_storage_alloc,
+		.create = pop3c_storage_create,
+		.destroy = pop3c_storage_destroy,
+		.mailbox_alloc = pop3c_mailbox_alloc,
 	}
 };
 

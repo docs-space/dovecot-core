@@ -260,14 +260,10 @@ struct mail_storage mdbox_deleted_storage = {
 	.set_info = &mdbox_setting_parser_info,
 
 	.v = {
-		mdbox_deleted_storage_alloc,
-		mdbox_storage_create,
-		mdbox_storage_destroy,
-		NULL,
-		NULL,
-		mdbox_deleted_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = mdbox_deleted_storage_alloc,
+		.create = mdbox_storage_create,
+		.destroy = mdbox_storage_destroy,
+		.mailbox_alloc = mdbox_deleted_mailbox_alloc,
 	}
 };
 

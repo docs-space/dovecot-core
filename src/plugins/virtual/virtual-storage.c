@@ -925,14 +925,10 @@ struct mail_storage virtual_storage = {
 		       MAIL_STORAGE_CLASS_FLAG_SECONDARY_INDEX,
 
 	.v = {
-		virtual_storage_alloc,
-		virtual_storage_create,
-		index_storage_destroy,
-		NULL,
-		NULL,
-		virtual_mailbox_alloc,
-		NULL,
-		NULL,
+		.alloc = virtual_storage_alloc,
+		.create = virtual_storage_create,
+		.destroy = index_storage_destroy,
+		.mailbox_alloc = virtual_mailbox_alloc,
 	}
 };
 
