@@ -78,8 +78,8 @@ struct mail_storage_vfuncs {
 	   the given mailbox list, i.e. their settings are compatible. This is
 	   called only for storages using the same storage class. If unset,
 	   storages with MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT are reused only
-	   when their unique_root_dir matches the mail_path setting, while
-	   other storages are always reused. */
+	   when their mail_path setting is the same, while other storages are
+	   always reused. */
 	bool (*storage_match)(struct mail_storage *storage,
 			      struct mailbox_list *list);
 };
@@ -92,7 +92,9 @@ union mail_storage_module_context {
 enum mail_storage_class_flags {
 	/* mailboxes are files, not directories */
 	MAIL_STORAGE_CLASS_FLAG_MAILBOX_IS_FILE	= 0x01,
-	/* root_dir points to a unique directory */
+	/* Storage state is tied to a specific mail root, so different roots
+	   can't share the same storage and mails can't be renamed between
+	   two storages. */
 	MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT	= 0x02,
 	/* mailbox_open_stream() is supported */
 	MAIL_STORAGE_CLASS_FLAG_OPEN_STREAMS	= 0x04,
@@ -178,9 +180,6 @@ struct mail_storage {
 	int obj_refcount;
 	/* Linked list of all mailboxes in the storage */
 	struct mailbox *mailboxes;
-	/* A "root dir" to enable storage sharing.  It is only ever used for
-	 * uniqueness checking (via strcmp) and never used as a path. */
-	const char *unique_root_dir;
 
 	/* Last error set in mail_storage_set_critical(). */
 	char *last_internal_error;

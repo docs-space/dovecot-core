@@ -303,9 +303,11 @@ mail_storage_match_class(struct mail_storage *storage,
 	if (storage->v.storage_match != NULL)
 		return storage->v.storage_match(storage, list);
 
-	if ((storage->class_flags & MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT) != 0 &&
-	    strcmp(storage->unique_root_dir, list->mail_set->mail_path) != 0)
-		return FALSE;
+	if ((storage->class_flags & MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT) != 0) {
+		/* Storage state is tied to its mail root directory. */
+		return strcmp(storage->set->mail_path,
+			      list->mail_set->mail_path) == 0;
+	}
 	return TRUE;
 }
 
@@ -591,9 +593,6 @@ mail_storage_create_real(struct mail_namespace *ns, struct event *set_event,
 		hook_mail_storage_created(storage);
 	} T_END;
 
-	i_assert(storage->unique_root_dir != NULL ||
-		 storage->v.storage_match != NULL ||
-		 (storage->class_flags & MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT) == 0);
 	DLLIST_PREPEND(&ns->user->storages, storage);
 	mail_namespace_add_storage(ns, storage);
 	*storage_r = storage;

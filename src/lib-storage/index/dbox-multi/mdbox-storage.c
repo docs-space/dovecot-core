@@ -56,9 +56,6 @@ int mdbox_storage_create(struct mail_storage *_storage,
 		return -1;
 	}
 
-	_storage->unique_root_dir =
-		p_strdup(_storage->pool, ns->list->mail_set->mail_path);
-
 	dir = mailbox_list_get_root_forced(ns->list, MAILBOX_LIST_PATH_TYPE_DIR);
 	storage->storage_dir = p_strconcat(_storage->pool, dir,
 					   "/"MDBOX_GLOBAL_DIR_NAME, NULL);
