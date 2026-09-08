@@ -675,11 +675,20 @@ struct mailbox_sync_context *
 imapc_mailbox_sync_init(struct mailbox *box, enum mailbox_sync_flags flags)
 {
 	struct imapc_mailbox *mbox = IMAPC_MAILBOX(box);
-	struct imapc_mailbox_list *list = mbox->storage->client->_list;
 	bool changes;
 	int ret = 0;
 
-	if (list != NULL) {
+	if (strcmp(box->list->name, MAILBOX_LIST_NAME_IMAPC) == 0) {
+		/* Allow the next mailbox existence lookup
+		   (imapc_list_get_mailbox_flags()) to refresh the cached
+		   mailbox list again. This must be done to the mailbox's own
+		   list: the storage may be shared by several namespaces, each
+		   of which has its own list and cache, while
+		   storage->client->_list is only the list of the namespace
+		   that created the storage. */
+		struct imapc_mailbox_list *list =
+			container_of(box->list, struct imapc_mailbox_list, list);
+
 		if (!list->refreshed_mailboxes &&
 		    list->last_refreshed_mailboxes < ioloop_time)
 			list->refreshed_mailboxes_recently = FALSE;
