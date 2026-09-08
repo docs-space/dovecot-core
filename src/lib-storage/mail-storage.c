@@ -295,13 +295,16 @@ mail_storage_create_root(struct mailbox_list *list,
 static bool
 mail_storage_match_class(struct mail_storage *storage,
 			 const struct mail_storage *storage_class,
-			 const struct mail_storage_settings *mail_set)
+			 struct mailbox_list *list)
 {
 	if (strcmp(storage->name, storage_class->name) != 0)
 		return FALSE;
 
+	if (storage->v.storage_match != NULL)
+		return storage->v.storage_match(storage, list);
+
 	if ((storage->class_flags & MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT) != 0 &&
-	    strcmp(storage->unique_root_dir, mail_set->mail_path) != 0)
+	    strcmp(storage->unique_root_dir, list->mail_set->mail_path) != 0)
 		return FALSE;
 
 	if (strcmp(storage->name, "shared") == 0) {
@@ -314,12 +317,12 @@ mail_storage_match_class(struct mail_storage *storage,
 static struct mail_storage *
 mail_storage_find(struct mail_user *user,
 		  const struct mail_storage *storage_class,
-		  const struct mail_storage_settings *mail_set)
+		  struct mailbox_list *list)
 {
 	struct mail_storage *storage = user->storages;
 
 	for (; storage != NULL; storage = storage->next) {
-		if (mail_storage_match_class(storage, storage_class, mail_set))
+		if (mail_storage_match_class(storage, storage_class, list))
 			return storage;
 	}
 	return NULL;
@@ -505,8 +508,7 @@ mail_storage_create_real(struct mail_namespace *ns, struct event *set_event,
 		}
 	}
 
-	storage = mail_storage_find(ns->user, storage_class,
-				    ns->list->mail_set);
+	storage = mail_storage_find(ns->user, storage_class, ns->list);
 	if (storage != NULL) {
 		/* using an existing storage */
 		storage->refcount++;
@@ -595,6 +597,7 @@ mail_storage_create_real(struct mail_namespace *ns, struct event *set_event,
 	} T_END;
 
 	i_assert(storage->unique_root_dir != NULL ||
+		 storage->v.storage_match != NULL ||
 		 (storage->class_flags & MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT) == 0);
 	DLLIST_PREPEND(&ns->user->storages, storage);
 	mail_namespace_add_storage(ns, storage);

@@ -74,6 +74,14 @@ struct mail_storage_vfuncs {
 	   rebuild the index. */
 	int (*list_index_rebuild)(struct mail_storage *storage,
 				  enum mail_storage_list_index_rebuild_reason reason);
+	/* Returns TRUE if this already existing storage can be used also for
+	   the given mailbox list, i.e. their settings are compatible. This is
+	   called only for storages using the same storage class. If unset,
+	   storages with MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT are reused only
+	   when their unique_root_dir matches the mail_path setting, while
+	   other storages are always reused. */
+	bool (*storage_match)(struct mail_storage *storage,
+			      struct mailbox_list *list);
 };
 
 union mail_storage_module_context {
