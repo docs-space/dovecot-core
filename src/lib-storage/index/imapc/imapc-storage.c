@@ -4,6 +4,7 @@
 #include "ioloop.h"
 #include "str.h"
 #include "settings.h"
+#include "ssl-settings.h"
 #include "imap-arg.h"
 #include "imap-util.h"
 #include "imap-resp-code.h"
@@ -333,11 +334,17 @@ int imapc_storage_client_create(struct mailbox_list *list,
 	const struct imapc_settings *imapc_set;
 	struct imapc_storage_client *client;
 	struct imapc_parameters params = {};
+	const struct ssl_settings *ssl_set = NULL;
 	string_t *str;
 
 	if (settings_get(list->event, &imapc_setting_parser_info, 0,
 			 &imapc_set, error_r) < 0)
 		return -1;
+	if (strcmp(imapc_set->imapc_ssl, "no") != 0 &&
+	    ssl_client_settings_get(list->event, &ssl_set, error_r) < 0) {
+		settings_free(imapc_set);
+		return -1;
+	}
 
 	if ((ns->flags & NAMESPACE_FLAG_UNUSABLE) != 0 ||
 	    *imapc_set->imapc_host == '\0')
@@ -358,11 +365,13 @@ int imapc_storage_client_create(struct mailbox_list *list,
 							"'%s' is not supported",
 							mech_name);
 				settings_free(imapc_set);
+				settings_free(ssl_set);
 				return -1;
 			} else if (dsasl_client_mech_uses_password(mech) &&
 				   *imapc_set->imapc_password == '\0') {
 				*error_r = "Missing imapc_password";
 				settings_free(imapc_set);
+				settings_free(ssl_set);
 				return -1;
 			}
 		}
@@ -381,6 +390,9 @@ int imapc_storage_client_create(struct mailbox_list *list,
 	client = i_new(struct imapc_storage_client, 1);
 	client->refcount = 1;
 	client->set = imapc_set;
+	client->ssl_set = ssl_set;
+	client->disabled =
+		HAS_ALL_BITS(params.flags, IMAPC_PARAMETER_CLIENT_DISABLED);
 	i_array_init(&client->untagged_callbacks, 16);
 	client->client = imapc_client_init(&params, list->event);
 	imapc_client_register_untagged(client->client,
@@ -410,11 +422,49 @@ void imapc_storage_client_unref(struct imapc_storage_client **_client)
 		return;
 	imapc_client_deinit(&client->client);
 	settings_free(client->set);
+	settings_free(client->ssl_set);
 	array_foreach_modifiable(&client->untagged_callbacks, cb)
 		i_free(cb->name);
 	array_free(&client->untagged_callbacks);
 	i_free(client->auth_failed_reason);
 	i_free(client);
+}
+
+static bool
+imapc_storage_match(struct mail_storage *_storage, struct mailbox_list *list)
+{
+	struct imapc_storage *storage = IMAPC_STORAGE(_storage);
+	const struct imapc_settings *imapc_set;
+	const struct ssl_settings *ssl_set;
+	const char *error;
+	bool match;
+
+	if (storage->client->disabled ||
+	    HAS_ANY_BITS(list->ns->flags, NAMESPACE_FLAG_UNUSABLE)) {
+		/* Never share a disabled client, or share a working client
+		   with a namespace that must not access the remote. */
+		return FALSE;
+	}
+	if (settings_get(list->event, &imapc_setting_parser_info, 0,
+			 &imapc_set, &error) < 0) {
+		/* The error is reported when the new storage is created. */
+		return FALSE;
+	}
+	match = settings_equal(&imapc_setting_parser_info, storage->client->set,
+			       imapc_set, NULL);
+	settings_free(imapc_set);
+	if (!match || storage->client->ssl_set == NULL) {
+		/* Either the settings differ, or imapc_ssl=no in both of them
+		   and there are no SSL settings to compare. */
+		return match;
+	}
+
+	if (ssl_client_settings_get(list->event, &ssl_set, &error) < 0)
+		return FALSE;
+	match = settings_equal(&ssl_setting_parser_info,
+			       storage->client->ssl_set, ssl_set, NULL);
+	settings_free(ssl_set);
+	return match;
 }
 
 static int
@@ -440,28 +490,6 @@ imapc_storage_create(struct mail_storage *_storage,
 		_storage->nonbody_access_fields |=
 			MAIL_FETCH_IMAP_BODY | MAIL_FETCH_IMAP_BODYSTRUCTURE;
 	}
-
-	/* serialize all the settings */
-	_storage->unique_root_dir = p_strdup_printf(_storage->pool,
-						    "%s://(%s|%s):%s@%s:%u/%s mechs:%s features:%s "
-						    "rawlog:%s cmd_timeout:%u maxidle:%u maxline:%zuu "
-						    "pop3delflg:%s root_dir:%s",
-						    storage->set->imapc_ssl,
-						    storage->set->imapc_user,
-						    storage->set->imapc_master_user,
-						    storage->set->imapc_password,
-						    storage->set->imapc_host,
-						    storage->set->imapc_port,
-						    storage->set->imapc_list_prefix,
-						    t_array_const_string_join(&storage->set->imapc_sasl_mechanisms,
-									      ","),
-						    t_array_const_string_join(&storage->set->imapc_features, ","),
-						    storage->set->imapc_rawlog_dir,
-						    storage->set->imapc_cmd_timeout_secs,
-						    storage->set->imapc_max_idle_time_secs,
-						    (size_t) storage->set->imapc_max_line_length,
-						    storage->set->pop3_deleted_flag,
-						    ns->list->mail_set->mail_path);
 
 	imapc_storage_client_register_untagged(storage->client, "STATUS",
 					       imapc_untagged_status);
@@ -1453,6 +1481,7 @@ struct mail_storage imapc_storage = {
 		.create = imapc_storage_create,
 		.destroy = imapc_storage_destroy,
 		.mailbox_alloc = imapc_mailbox_alloc,
+		.storage_match = imapc_storage_match,
 	}
 };
 

@@ -61,10 +61,6 @@ struct imapc_capability_name {
 extern const struct imapc_capability_name imapc_capability_names[];
 /* </settings checks> */
 
-/*
- * NOTE: Any additions here should be reflected in imapc_storage_create's
- * serialization of settings.
- */
 struct imapc_settings {
 	pool_t pool;
 	const char *imapc_host;
