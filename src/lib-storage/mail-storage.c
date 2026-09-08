@@ -306,11 +306,6 @@ mail_storage_match_class(struct mail_storage *storage,
 	if ((storage->class_flags & MAIL_STORAGE_CLASS_FLAG_UNIQUE_ROOT) != 0 &&
 	    strcmp(storage->unique_root_dir, list->mail_set->mail_path) != 0)
 		return FALSE;
-
-	if (strcmp(storage->name, "shared") == 0) {
-		/* allow multiple independent shared namespaces */
-		return FALSE;
-	}
 	return TRUE;
 }
 
