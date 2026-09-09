@@ -304,8 +304,7 @@ pool_alloconly_free_blocks_until_last(struct alloconly_pool *apool)
 	   struct alloconly_pool allocation. */
 	while (apool->block->prev != NULL) {
 		block = apool->block;
-		apool->block = block->prev;
-
+		apool->block = apool->block->prev;
 		pool_alloconly_free_block(apool, block);
 	}
 }
