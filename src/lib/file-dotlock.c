@@ -150,6 +150,12 @@ update_change_info(const struct stat *st, struct file_change_info *change,
 			change_time = st->st_mtime <= now &&
 				(st->st_mtime > st->st_ctime || !check_ctime) ?
 				st->st_mtime : st->st_ctime;
+			if (change_time > now) {
+				/* ctime is in the future. This can happen
+				   if the file was changed after we last
+				   read the current time. */
+				change_time = now;
+			}
 		}
 		if (*last_change_r < change_time)
 			*last_change_r = change_time;
