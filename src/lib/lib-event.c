@@ -880,7 +880,11 @@ event_category_register(struct event_category *category)
 		internal->name = i_strdup(category->name);
 		internal->refcount = 1;
 		internal->representative.name = internal->name;
-		internal->representative.parent = category->parent;
+		/* Point to the parent's representative rather than to the
+		   caller's struct, which may be freed while this
+		   representative still exists. */
+		internal->representative.parent = internal->parent == NULL ?
+			NULL : &internal->parent->representative;
 		internal->representative.internal = internal;
 
 		event_category_add_to_array(internal);

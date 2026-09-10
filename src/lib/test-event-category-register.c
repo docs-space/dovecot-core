@@ -144,6 +144,9 @@ static void test_event_category_1ptr_nonnull(void)
 	register_cat(&cat_with_parent, NULL);
 	check_cat_registered(CAT_NAME_0, TRUE);
 	check_cat_registered(CAT_NAME_1, TRUE);
+	/* the representative's parent is the parent's representative */
+	test_assert(event_category_find_registered(CAT_NAME_1)->parent ==
+		    event_category_find_registered(CAT_NAME_0));
 
 	unregister_cat(&cat_with_parent, UNREG_LAST);
 	unregister_cat(&cat_with_parent, UNREG_NOP);
