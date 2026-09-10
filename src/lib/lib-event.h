@@ -348,6 +348,15 @@ event_add_categories(struct event *event,
 /* Add a single category to the event. */
 struct event *
 event_add_category(struct event *event, struct event_category *category);
+/* Drop lib-event's references to a struct event_category that is about to be
+   freed. This is needed only for dynamically allocated categories; statically
+   allocated ones live until the process dies anyway.
+
+   The category itself isn't unregistered: categories can never be
+   unregistered, so the name stays registered and events that are already
+   using it stay valid. Only the given struct is forgotten - it must not be
+   used anymore, unless it's registered again. */
+void event_category_unregister(struct event_category *category);
 
 /* Add key=value field to the event. If a key already exists, it's replaced.
    Child events automatically inherit key=values from their parents at the

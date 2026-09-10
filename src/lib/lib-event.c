@@ -941,6 +941,24 @@ event_category_register(struct event_category *category)
 	return &internal->representative;
 }
 
+void event_category_unregister(struct event_category *category)
+{
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+	unsigned int idx;
+#endif
+
+	if (category->internal == NULL) {
+		/* not registered */
+		return;
+	}
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+	/* Refer to earlier comment in event_category_register(). */
+	if (array_lsearch_ptr_idx(&event_registered_categories, category, &idx))
+		array_delete(&event_registered_categories, idx, 1);
+#endif
+	category->internal = NULL;
+}
+
 static bool
 event_find_category(const struct event *event,
 		    const struct event_category *category)
